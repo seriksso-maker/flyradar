@@ -80,18 +80,14 @@
   .acts button.on{color:var(--amber)}
   .leaflet-tooltip.rt{background:var(--panel);color:#cdbbff;border:1px solid var(--line);box-shadow:none;font:600 11px var(--mono);padding:2px 5px}
   .leaflet-tooltip-top.rt::before{border-top-color:var(--line)}
-  #cock{position:absolute;inset:0;z-index:900;background:linear-gradient(#3f7fc4 0%,#9cc7e8 45%,#d6e4ec 52%,#5d6b57 53%)}
+  #cock{position:absolute;inset:0;z-index:2000;background:#8fb4d8;overflow:hidden;touch-action:none}
   #cmap{position:absolute;inset:0}
-  .cframe{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  .ctop{position:absolute;z-index:3;left:calc(8% + 6px);top:calc(7% + 4px);display:flex;flex-direction:column;gap:2px;font:500 12px var(--mono);color:#fff;text-shadow:0 0 4px #000,0 0 4px #000}
-  .ctop b{font:700 22px var(--cond);letter-spacing:.05em}
-  .chud{position:absolute;z-index:3;left:0;right:0;bottom:0;height:22%;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;padding:0 3%;gap:4px}
-  .chud div{text-align:center;min-width:0}
-  .chud label{display:block;color:#7b8fa3;font-size:10px;text-transform:uppercase;letter-spacing:.1em}
-  .chud span{font:500 17px var(--mono);color:#ffb454;font-variant-numeric:tabular-nums}
-  .cattr{position:absolute;z-index:3;right:6px;bottom:3px;font-size:9px;color:#5f7284}
-  .cmsg{position:absolute;z-index:4;left:50%;top:40%;transform:translateX(-50%);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;text-align:center;max-width:80%}
-  #cclose{position:absolute;z-index:5;top:12px;right:12px}
+  #cmap canvas{outline:none}
+  #cpit{position:absolute;left:0;top:0;pointer-events:none}
+  .cattr{position:absolute;z-index:3;left:8px;top:6px;font-size:9px;color:rgba(255,255,255,.7);text-shadow:0 0 3px #000}
+  .cmsg{position:absolute;z-index:4;left:50%;top:30%;transform:translateX(-50%);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;text-align:center;max-width:80%}
+  #chint{position:absolute;z-index:4;left:50%;top:14%;transform:translateX(-50%);padding:8px 12px;background:rgba(10,16,23,.85);border:1px solid var(--line);border-radius:6px;font-size:13px;text-align:center}
+  #cclose{position:absolute;z-index:5;top:10px;right:10px}
   #air{min-width:190px;max-width:100%}
   #air.on{border-color:var(--amber);color:var(--amber)}
   .photo{display:block;width:100%;max-height:150px;object-fit:cover;border-bottom:1px solid var(--line)}
@@ -147,21 +143,10 @@
 
 <div id="cock" hidden>
   <div id="cmap"></div>
-  <svg class="cframe" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-    <defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a323c"/><stop offset="1" stop-color="#0c1015"/></linearGradient></defs>
-    <path fill="#0c1015" fill-rule="evenodd" d="M0 0H100V100H0Z M7 7 Q50 2 93 7 L97 76 H3 Z"/>
-    <rect x="48.7" y="3" width="2.6" height="73" fill="#0c1015"/>
-    <rect x="0" y="73.5" width="100" height="3.5" fill="url(#gs)"/>
-  </svg>
-  <div class="ctop"><b id="hCall"></b><span id="hRoute"></span></div>
-  <div class="chud">
-    <div><label>Fart</label><span id="hSpd">–</span></div>
-    <div><label>Kurs</label><span id="hHdg">–</span></div>
-    <div><label>Høyde</label><span id="hAlt">–</span></div>
-    <div><label>Stigning</label><span id="hVs">–</span></div>
-  </div>
-  <div class="cattr">Bilder: Esri World Imagery · Terreng: AWS/Mapzen</div>
+  <canvas id="cpit"></canvas>
+  <div class="cattr">Bilder © Esri World Imagery · Terreng: AWS/Mapzen · MapLibre</div>
   <div id="cmsg" class="cmsg" hidden></div>
+  <div id="chint" hidden>Snu mobilen til liggende for best utsikt</div>
   <button id="cclose" type="button">Tilbake til kart</button>
 </div>
 
@@ -416,7 +401,7 @@
         gs: a.gs==null?null:a.gs, trk: a.track!=null?a.track:(a.true_heading||0),
         vr: a.baro_rate!=null?a.baro_rate:(a.geom_rate!=null?a.geom_rate:null),
         squawk:a.squawk||'', ias:a.ias!=null?a.ias:null, mach:a.mach!=null?a.mach:null,
-        altg:typeof a.alt_geom==='number'?a.alt_geom:null, cat:a.category||''
+        altg:typeof a.alt_geom==='number'?a.alt_geom:null, cat:a.category||'', roll:(typeof a.roll==='number')?a.roll:null
       };
     });
   }
@@ -831,19 +816,18 @@
   }
   map.on('click', function(){ if(sel) select(null); });
 
-  /* ---------- Cockpit-visning (3D terreng sett fra flyet) ---------- */
-  var cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockHdg = 0, cockLast = 0, hudLast = 0;
+  /* ---------- Cockpit-visning: 3D-terreng sett fra flyet + tegnet cockpit ---------- */
+  var cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
+  var ML_URL = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl';
 
   function loadMapLibre(){
     if(window.maplibregl) return Promise.resolve();
     if(mlLoading) return mlLoading;
     mlLoading = new Promise(function(res, rej){
-      var l = document.createElement('link'); l.rel = 'stylesheet';
-      l.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(l);
-      var sc = document.createElement('script');
-      sc.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.href = ML_URL + '.css'; document.head.appendChild(l);
+      var sc = document.createElement('script'); sc.src = ML_URL + '.js';
       sc.onload = res;
-      sc.onerror = function(){ mlLoading = null; rej(new Error('Kunne ikke laste 3D-biblioteket. Sjekk internett.')); };
+      sc.onerror = function(){ mlLoading = null; rej(new Error('Kunne ikke laste 3D-biblioteket. Sjekk internett og prøv igjen.')); };
       document.head.appendChild(sc);
     });
     return mlLoading;
@@ -856,76 +840,414 @@
     return [p.lat0 + m*Math.cos(r)/111320, p.lon0 + m*Math.sin(r)/(111320*Math.cos(p.lat0*Math.PI/180))];
   }
   function angDiff(a, b){ return ((b-a+540)%360)-180; }
+  function clampN(v, a, b){ return Math.max(a, Math.min(b, v)); }
+  var RAD = Math.PI/180;
+
+  // Flyets stilling (nesehøyde og krengning) anslått fra ADS-B-data
+  function attitude(d){
+    var gs = d.gs || 0, gsm = gs*0.514444;
+    var gamma = (gs>40 && d.vr!=null) ? Math.atan((d.vr*0.00508)/gsm)/RAD : 0;
+    var aoa = clampN(1.5 + (280-gs)/45, 1.5, 7);
+    var pitch = (d.ground && gs<60) ? 0 : gamma + aoa;
+    return {pitch: pitch, gamma: gamma};
+  }
+
+  function cLayout(){
+    var el = $('#cock'), W = el.clientWidth, H = el.clientHeight, port = H > W*1.05;
+    var L = {W:W, H:H, port:port};
+    L.wy = port ? H*0.47 : H*0.58;             // overkant glareshield = nederkant vindu
+    if(port){
+      var s = W*0.47, y0 = L.wy + H*0.045;
+      L.pfd = {x:W*0.02, y:y0, w:s, h:Math.min(s*1.05, H-y0-H*0.2)};
+      L.nd  = {x:W*0.51, y:y0, w:s, h:L.pfd.h};
+      L.info = {x:W*0.02, y:y0+L.pfd.h+H*0.012, w:W*0.96, h:Math.max(H*0.07, H-(y0+L.pfd.h+H*0.012)-H*0.012)};
+    } else {
+      var y1 = L.wy + H*0.04, ph = H - y1 - H*0.025, s2 = Math.min(ph, W*0.27), g = W*0.012;
+      var tot = s2*2 + s2*0.85 + g*2, x0 = (W-tot)/2;
+      L.pfd = {x:x0, y:y1, w:s2, h:s2};
+      L.info = {x:x0+s2+g, y:y1, w:s2*0.85, h:s2};
+      L.nd = {x:x0+s2*1.85+g*2, y:y1, w:s2, h:s2};
+    }
+    // Himmelens utsnitt: vertikal synsvinkel velges slik at vinduet får ca. 70° horisontalt
+    var hf = port ? 62 : 72;
+    L.vfov = clampN(2*Math.atan(Math.tan(hf*RAD/2)*H/W)/RAD, 38, 110);
+    // Horisonten skal ligge ca. 56 % nedover vinduet ved rettlinjet flyging
+    var yh = L.wy*0.56;
+    L.baseElev = Math.atan(((yh - H/2)/(H/2)) * Math.tan(L.vfov*RAD/2))/RAD;
+    return L;
+  }
+
+  function cResize(){
+    var cv = $('#cpit'), dpr = Math.min(window.devicePixelRatio||1, 2);
+    cL = cLayout();
+    cv.width = Math.round(cL.W*dpr); cv.height = Math.round(cL.H*dpr);
+    cv.style.width = cL.W+'px'; cv.style.height = cL.H+'px';
+    cctx = cv.getContext('2d'); cctx.setTransform(dpr,0,0,dpr,0,0);
+    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(cL.vfov); }catch(e){} }
+    cs && (cs.bg = null);
+  }
 
   function openCockpit(){
     var p = planes.get(sel);
     if(!p) return;
-    $('#cock').hidden = false; cockOn = true;
-    cockHdg = p.d.trk || 0;
+    var el = $('#cock'); el.hidden = false; cockOn = true; cReady = false;
+    try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
+    try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function(){}); }catch(e){}
+    var d = p.d;
+    cs = {hdg:d.trk||0, roll:0, pitch:attitude(d).pitch, spd:d.ias!=null?d.ias:(d.gs||0), alt:d.alt||0, vs:d.vr||0, prevHdg:d.trk||0, bg:null};
     var msg = $('#cmsg'); msg.textContent = 'Laster 3D-kart …'; msg.hidden = false;
-    $('#hCall').textContent = p.d.call || p.d.hex.toUpperCase();
-    var r = p.d.call ? cache.route.get(p.d.call) : null;
-    $('#hRoute').textContent = r && r.origin && r.destination ? (r.origin.iata_code||'')+' → '+(r.destination.iata_code||'') : '';
+    cResize();
     loadMapLibre().then(function(){
       if(!cockOn) return;
       if(!cmap){
         cmap = new maplibregl.Map({
-          container:'cmap', interactive:false, attributionControl:false, fadeDuration:0,
-          center:[p.lon0, p.lat0], zoom:9, pitch:80, maxPitch:85,
+          container:'cmap', interactive:false, attributionControl:false, fadeDuration:0, pixelRatio:Math.min(window.devicePixelRatio||1, 1.5),
+          center:[p.lon0, p.lat0], zoom:11, pitch:80, bearing:0, maxPitch:120, minPitch:0, canvasContextAttributes:{antialias:false},
+          maxTileCacheSize:200,
           style:{
             version:8,
             sources:{
-              sat:{type:'raster', tileSize:256, maxzoom:18, tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']},
+              sat:{type:'raster', tileSize:256, maxzoom:18, attribution:'Esri', tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']},
               dem:{type:'raster-dem', tileSize:256, maxzoom:14, encoding:'terrarium', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
             },
-            layers:[{id:'sat', type:'raster', source:'sat'}],
-            terrain:{source:'dem', exaggeration:1}
+            layers:[{id:'sat', type:'raster', source:'sat', paint:{'raster-fade-duration':0}}],
+            terrain:{source:'dem', exaggeration:1},
+            sky:{'sky-color':'#3f86d6', 'horizon-color':'#d3e6f4', 'fog-color':'#dbe7ee', 'sky-horizon-blend':0.55, 'horizon-fog-blend':0.8, 'fog-ground-blend':0.55}
           }
         });
-        try{ cmap.transform.fov = 60; }catch(e){}
-      } else { cmap.resize(); }
-      msg.hidden = true;
+        cmap.on('error', function(ev){ cTileT = performance.now(); });
+        cmap.once('load', function(){ $('#cmsg').hidden = true; });
+      }
+      try{ cmap.setVerticalFieldOfView(cL.vfov); }catch(e){}
+      cResize();
       cockLoop(performance.now());
-    }).catch(function(e){ msg.textContent = e.message; });
+    }).catch(function(e){
+      msg.textContent = (e && e.message) || 'Kunne ikke starte 3D. Nettleseren må støtte WebGL.'; msg.hidden = false;
+    });
+    if(cL.port){
+      var h = $('#chint'); h.hidden = false; setTimeout(function(){ h.hidden = true; }, 5000);
+    }
   }
 
   function closeCockpit(){
     cockOn = false;
     cancelAnimationFrame(cockRaf);
     var c = $('#cock'); if(c) c.hidden = true;
+    try{ if(document.fullscreenElement) document.exitFullscreen(); screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); }catch(e){}
   }
 
   function cockLoop(ts){
     if(!cockOn) return;
     cockRaf = requestAnimationFrame(cockLoop);
-    if(ts - cockLast < 33) return;   // ca. 30 bilder i sekundet
-    cockLast = ts;
+    if(ts - cockLast < 40) return;      // ca. 25 bilder i sekundet
+    var dt = Math.min(0.2, (ts - cockLast)/1000 || 0.04); cockLast = ts;
     var p = planes.get(sel), msg = $('#cmsg');
     if(!p){ msg.textContent = 'Signalet fra flyet er borte'; msg.hidden = false; return; }
-    msg.hidden = true;
-    var d = p.d, pos = planePos(p);
-    cockHdg = (cockHdg + angDiff(cockHdg, d.trk||0)*0.06 + 360) % 360;
-    var altM = Math.max(25, (d.ground ? 0 : (d.alt||0))*0.3048 + 4);
-    // Synsvinkel: litt nedover mot horisonten, mer ved nedstigning
-    var gamma = (d.gs>50 && d.vr!=null) ? Math.atan((d.vr*0.00508)/(d.gs*0.514444))*180/Math.PI : 0;
-    var dip = 5 + Math.max(0, -gamma)*1.5;
-    var dist = Math.min(150000, Math.max(3000, altM/Math.tan(dip*Math.PI/180)));
-    var h = cockHdg*Math.PI/180;
-    var tgt = [pos[1] + dist*Math.sin(h)/(111320*Math.cos(pos[0]*Math.PI/180)), pos[0] + dist*Math.cos(h)/111320];
-    try{
-      var cam = cmap.getFreeCameraOptions();
-      cam.position = maplibregl.MercatorCoordinate.fromLngLat([pos[1], pos[0]], altM);
-      cam.lookAtPoint(tgt);
-      cmap.setFreeCameraOptions(cam);
-    }catch(e){}
-    if(ts - hudLast > 250){
-      hudLast = ts;
-      $('#hSpd').textContent = d.gs==null ? '–' : nb(d.gs)+' kt';
-      $('#hHdg').textContent = String(Math.round(d.trk||0)).padStart(3,'0')+'°';
-      $('#hAlt').textContent = d.ground ? 'Bakke' : (d.alt==null ? '–' : nb(d.alt)+' ft');
-      $('#hVs').textContent = d.vr==null ? '–' : (d.vr>0?'+':'')+nb(d.vr);
+    if(msg.textContent === 'Signalet fra flyet er borte') msg.hidden = true;
+    var d = p.d, pos = planePos(p), at = attitude(d);
+    // Glatt overgang mellom ADS-B-målingene
+    var k = 1 - Math.pow(0.5, dt/0.8);
+    var dh = angDiff(cs.hdg, d.trk||0);
+    cs.hdg = (cs.hdg + dh*k + 360) % 360;
+    var rate = angDiff(cs.prevHdg, cs.hdg)/Math.max(dt, 0.001); cs.prevHdg = cs.hdg;     // grader per sekund
+    cs.rate = (cs.rate||0) + (rate - (cs.rate||0))*(1 - Math.pow(0.5, dt/1.2));
+    var gsm = (d.gs||0)*0.514444;
+    var rollT = d.ground ? 0 : clampN(Math.atan(gsm*cs.rate*RAD/9.81)/RAD, -32, 32);
+    if(d.roll!=null && !d.ground) rollT = clampN(d.roll, -40, 40);
+    cs.roll += (rollT - cs.roll)*(1 - Math.pow(0.5, dt/0.7));
+    cs.pitch += (at.pitch - cs.pitch)*k;
+    cs.spd += ((d.ias!=null?d.ias:(d.gs||0)) - cs.spd)*k;
+    cs.alt += ((d.ground?(cs.alt):(d.alt||0)) - cs.alt)*k;
+    if(d.ground) cs.alt = 0;
+    cs.vs += ((d.vr||0) - cs.vs)*k;
+
+    if(cmap && cL){
+      try{
+        var altM = Math.max(3, (cs.alt||0)*0.3048);
+        var ground = null;
+        try{ ground = cmap.queryTerrainElevation([pos[1], pos[0]]); }catch(e){}
+        if(ground!=null){ altM = Math.max(altM, ground + (d.ground ? 6 : 25)); }
+        var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
+        var co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll);
+        cmap.jumpTo(co);
+      }catch(e){ if(!cs.err){ cs.err = 1; msg.textContent = '3D-feil: ' + e.message; msg.hidden = false; } }
     }
+    cDraw(d, pos);
   }
+
+  /* ----- Tegning av cockpit ----- */
+  function rr(c, x, y, w, h, r){
+    c.beginPath(); c.moveTo(x+r, y); c.lineTo(x+w-r, y); c.quadraticCurveTo(x+w, y, x+w, y+r); c.lineTo(x+w, y+h-r);
+    c.quadraticCurveTo(x+w, y+h, x+w-r, y+h); c.lineTo(x+r, y+h); c.quadraticCurveTo(x, y+h, x, y+h-r); c.lineTo(x, y+r); c.quadraticCurveTo(x, y, x+r, y);
+    c.closePath();
+  }
+  function windowPath(c, L, keep){
+    var W = L.W, H = L.H, tx = L.port ? 0.05 : 0.10, bx = L.port ? -0.01 : 0.012;
+    if(!keep) c.beginPath();
+    c.moveTo(W*tx, H*0.04);
+    c.quadraticCurveTo(W*0.5, -H*0.012, W*(1-tx), H*0.04);
+    c.lineTo(W*(1-bx), L.wy); c.lineTo(W*bx, L.wy); c.closePath();
+  }
+  function drawFrame(c, L){
+    var W = L.W, H = L.H, g;
+    // Karm rundt vinduet
+    c.save();
+    c.beginPath(); c.rect(0, 0, W, H); windowPath(c, L, true);
+    g = c.createLinearGradient(0, 0, 0, L.wy); g.addColorStop(0, '#0e1116'); g.addColorStop(1, '#1b2027');
+    c.fillStyle = g; c.fill('evenodd');
+    c.restore();
+    // Midtstolpe
+    c.save(); windowPath(c, L); c.clip();
+    var pw = Math.max(8, W*0.016);
+    g = c.createLinearGradient(W/2-pw/2, 0, W/2+pw/2, 0); g.addColorStop(0, '#1a1f26'); g.addColorStop(.5, '#2c333c'); g.addColorStop(1, '#14181d');
+    c.fillStyle = g; c.fillRect(W/2-pw/2, 0, pw, L.wy);
+    // Svak refleksjon og kantmørkning i glasset
+    var rg = c.createRadialGradient(W/2, L.wy*.55, Math.min(W, L.wy)*0.3, W/2, L.wy*.55, Math.max(W, L.wy)*0.75);
+    rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(0,0,0,.38)');
+    c.fillStyle = rg; c.fillRect(0, 0, W, L.wy);
+    var lg = c.createLinearGradient(0, 0, W*0.6, L.wy);
+    lg.addColorStop(0, 'rgba(255,255,255,.07)'); lg.addColorStop(.35, 'rgba(255,255,255,0)');
+    c.fillStyle = lg; c.fillRect(0, 0, W, L.wy);
+    c.restore();
+    // Skarp innerkant
+    windowPath(c, L); c.lineWidth = 2; c.strokeStyle = '#3b434e'; c.stroke();
+    // Vindusviskere (parkert)
+    c.strokeStyle = '#0b0d10'; c.lineWidth = Math.max(3, W*.004); c.lineCap = 'round';
+    c.beginPath(); c.moveTo(W*.40, L.wy); c.lineTo(W*.27, L.wy - H*.075); c.stroke();
+    c.beginPath(); c.moveTo(W*.74, L.wy); c.lineTo(W*.61, L.wy - H*.075); c.stroke();
+    // Overheadpanel (topp) med noen lys
+    g = c.createLinearGradient(0, 0, 0, H*0.04); g.addColorStop(0, '#0a0c10'); g.addColorStop(1, '#161a20');
+    c.fillStyle = g; c.fillRect(0, 0, W, H*0.012);
+    // Glareshield
+    var gy = L.wy;
+    c.save();
+    g = c.createLinearGradient(0, gy-2, 0, gy + H*0.045);
+    g.addColorStop(0, '#323943'); g.addColorStop(.18, '#262c34'); g.addColorStop(1, '#14181d');
+    c.fillStyle = g; c.fillRect(0, gy-1, W, H-gy+1);
+    c.fillStyle = '#0a0d11'; c.fillRect(0, gy + H*0.028, W, 2);
+    // Lysknapper på glareshield
+    var bw = W*0.028, bh = H*0.012, bx0 = W*0.5 - bw*4.5;
+    for(var i=0; i<9; i++){
+      rr(c, bx0 + i*bw, gy + H*0.008, bw*.78, bh, 2);
+      c.fillStyle = (i%3===1) ? '#4a3a1c' : '#202630'; c.fill();
+      c.fillStyle = (i%3===1) ? '#ffb454' : '#52606f'; c.fillRect(bx0 + i*bw + bw*.12, gy + H*0.008 + bh*.35, bw*.5, 1.5);
+    }
+    c.restore();
+    // Instrumentpanel-bakgrunn
+    g = c.createLinearGradient(0, gy + H*0.045, 0, H); g.addColorStop(0, '#171b21'); g.addColorStop(1, '#0d1014');
+    c.fillStyle = g; c.fillRect(0, gy + H*0.045, W, H);
+  }
+
+  function bezel(c, r){
+    c.save();
+    rr(c, r.x-4, r.y-4, r.w+8, r.h+8, 7); c.fillStyle = '#080a0d'; c.fill();
+    c.lineWidth = 1.5; c.strokeStyle = '#2d343d'; c.stroke();
+    c.restore();
+  }
+  function pad3(n){ n = Math.round(((n%360)+360)%360); return String(n===0?360:n).padStart(3, '0'); }
+
+  function drawPFD(c, r, d){
+    bezel(c, r);
+    c.save(); rr(c, r.x, r.y, r.w, r.h, 4); c.clip();
+    var cx = r.x + r.w*0.5, cy = r.y + r.h*0.46, ppd = r.h/30, fs = Math.max(9, r.h/17);
+    // Kunstig horisont
+    c.save(); c.translate(cx, cy); c.rotate(cs.roll*RAD); c.translate(0, cs.pitch*ppd);
+    c.fillStyle = '#2a79d4'; c.fillRect(-r.w*2, -r.h*3, r.w*4, r.h*3);
+    c.fillStyle = '#7a5130'; c.fillRect(-r.w*2, 0, r.w*4, r.h*3);
+    c.fillStyle = '#fff'; c.fillRect(-r.w*2, -1, r.w*4, 2);
+    c.strokeStyle = '#fff'; c.fillStyle = '#fff'; c.lineWidth = 1.5; c.font = '600 ' + (fs*.85) + 'px ' + 'ui-monospace,Menlo,monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for(var a=-30; a<=30; a+=2.5){
+      if(a===0) continue;
+      var big = a%10===0, mid = a%5===0, hw = big ? r.w*.13 : (mid ? r.w*.08 : r.w*.04);
+      c.beginPath(); c.moveTo(-hw, -a*ppd); c.lineTo(hw, -a*ppd); c.stroke();
+      if(big){ c.fillText(String(Math.abs(a)), -hw-fs*.9, -a*ppd); c.fillText(String(Math.abs(a)), hw+fs*.9, -a*ppd); }
+    }
+    c.restore();
+    // Rullskala
+    c.save(); c.translate(cx, cy); c.strokeStyle = '#fff'; c.fillStyle = '#fff'; c.lineWidth = 1.5;
+    var R = r.h*.36;
+    c.beginPath(); c.arc(0, 0, R, (-150)*RAD, (-30)*RAD); c.stroke();
+    [-60,-45,-30,-20,-10,0,10,20,30,45,60].forEach(function(t){
+      var an = (-90 + t)*RAD, l = (t%30===0 || t===0) ? 9 : 5;
+      c.beginPath(); c.moveTo(Math.cos(an)*R, Math.sin(an)*R); c.lineTo(Math.cos(an)*(R-l), Math.sin(an)*(R-l)); c.stroke();
+    });
+    c.rotate(cs.roll*RAD);
+    c.beginPath(); c.moveTo(0, -R+1); c.lineTo(-6, -R+11); c.lineTo(6, -R+11); c.closePath(); c.fillStyle = '#ffd24a'; c.fill();
+    c.restore();
+    // Flysymbol
+    c.save(); c.translate(cx, cy); c.strokeStyle = '#ffd24a'; c.lineWidth = 3; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(-r.w*.22, 0); c.lineTo(-r.w*.08, 0); c.lineTo(-r.w*.08, 7); c.stroke();
+    c.beginPath(); c.moveTo(r.w*.22, 0); c.lineTo(r.w*.08, 0); c.lineTo(r.w*.08, 7); c.stroke();
+    c.fillStyle = '#ffd24a'; c.fillRect(-2, -2, 4, 4);
+    c.restore();
+    // Fartstape (venstre)
+    var tw = r.w*.2, mono = 'ui-monospace,Menlo,monospace';
+    c.fillStyle = 'rgba(8,12,18,.62)'; c.fillRect(r.x, r.y + r.h*.08, tw, r.h*.7);
+    c.save(); c.beginPath(); c.rect(r.x, r.y + r.h*.08, tw, r.h*.7); c.clip();
+    var sp = cs.spd, pk = r.h*.7/64;
+    c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 1.2; c.textAlign = 'left'; c.font = '600 ' + (fs*.85) + 'px ' + mono; c.textBaseline = 'middle';
+    for(var t = Math.floor((sp-34)/10)*10; t <= sp+34; t += 10){
+      if(t < 0) continue;
+      var y = cy - (t - sp)*pk;
+      c.beginPath(); c.moveTo(r.x+tw, y); c.lineTo(r.x+tw-(t%20===0?9:5), y); c.stroke();
+      if(t%20===0) c.fillText(String(t), r.x+3, y);
+    }
+    c.restore();
+    c.fillStyle = '#000'; c.fillRect(r.x, cy-fs*.8, tw+2, fs*1.6);
+    c.strokeStyle = '#ffd24a'; c.lineWidth = 1.5; c.strokeRect(r.x+.5, cy-fs*.8, tw+1, fs*1.6);
+    c.fillStyle = '#3ddc84'; c.font = '700 ' + fs + 'px ' + mono; c.textAlign = 'center'; c.fillText(String(Math.max(0, Math.round(sp))), r.x + tw/2, cy);
+    // Høydetape (høyre)
+    var ax = r.x + r.w - tw;
+    c.fillStyle = 'rgba(8,12,18,.62)'; c.fillRect(ax, r.y + r.h*.08, tw, r.h*.7);
+    c.save(); c.beginPath(); c.rect(ax, r.y + r.h*.08, tw, r.h*.7); c.clip();
+    var al = cs.alt, pa = r.h*.7/820;
+    c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.textAlign = 'right'; c.font = '600 ' + (fs*.8) + 'px ' + mono;
+    for(var t2 = Math.floor((al-460)/100)*100; t2 <= al+460; t2 += 100){
+      var y2 = cy - (t2 - al)*pa;
+      c.beginPath(); c.moveTo(ax, y2); c.lineTo(ax+(t2%200===0?9:5), y2); c.stroke();
+      if(t2%200===0) c.fillText(String(t2), r.x+r.w-3, y2);
+    }
+    c.restore();
+    c.fillStyle = '#000'; c.fillRect(ax-2, cy-fs*.8, tw+2, fs*1.6);
+    c.strokeStyle = '#ffd24a'; c.strokeRect(ax-1.5, cy-fs*.8, tw+1, fs*1.6);
+    c.fillStyle = '#3ddc84'; c.font = '700 ' + (fs*.95) + 'px ' + mono; c.textAlign = 'center'; c.fillText(d.ground ? 'GND' : String(Math.round(al/10)*10), ax + tw/2, cy);
+    // Vertikal fart
+    c.fillStyle = '#fff'; c.font = '600 ' + (fs*.8) + 'px ' + mono; c.textAlign = 'right';
+    c.fillText((cs.vs>=0?'+':'') + Math.round(cs.vs/100)*100, r.x+r.w-3, r.y + r.h*.84);
+    c.fillStyle = '#9fb0c0'; c.textAlign = 'left'; c.fillText('V/S', ax-2-fs*2.2, r.y + r.h*.84);
+    // Kurstape (bunn)
+    var hy = r.y + r.h*.88, hh = r.h*.12;
+    c.fillStyle = 'rgba(8,12,18,.75)'; c.fillRect(r.x, hy, r.w, hh + 2);
+    c.save(); c.beginPath(); c.rect(r.x, hy, r.w, hh); c.clip();
+    var pdg = r.w/60;
+    c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.textAlign = 'center'; c.font = '600 ' + (fs*.75) + 'px ' + mono; c.textBaseline = 'middle';
+    for(var h5 = Math.floor((cs.hdg-32)/5)*5; h5 <= cs.hdg+32; h5 += 5){
+      var x = cx + (h5 - cs.hdg)*pdg, hv = ((h5%360)+360)%360;
+      c.beginPath(); c.moveTo(x, hy); c.lineTo(x, hy + (hv%10===0 ? hh*.38 : hh*.2)); c.stroke();
+      if(hv%10===0) c.fillText(String(hv/10).padStart(2,'0'), x, hy + hh*.68);
+    }
+    c.restore();
+    c.fillStyle = '#ffd24a'; c.beginPath(); c.moveTo(cx, hy); c.lineTo(cx-5, hy-7); c.lineTo(cx+5, hy-7); c.closePath(); c.fill();
+    c.fillStyle = '#000'; c.fillRect(cx-fs*1.5, hy-fs*1.5, fs*3, fs*1.15);
+    c.fillStyle = '#3ddc84'; c.font = '700 ' + (fs*.9) + 'px ' + mono; c.textBaseline = 'middle'; c.fillText(pad3(cs.hdg)+'°', cx, hy-fs*.92);
+    c.restore();
+  }
+
+  function nearNm(range){ var L = [10,20,40,80,160,320]; for(var i=0;i<L.length;i++) if(L[i]>=range) return L[i]; return 320; }
+  function bearing(a, b, c2, d2){
+    var t = RAD, y = Math.sin((d2-b)*t)*Math.cos(c2*t), x = Math.cos(a*t)*Math.sin(c2*t) - Math.sin(a*t)*Math.cos(c2*t)*Math.cos((d2-b)*t);
+    return (Math.atan2(y, x)/t + 360) % 360;
+  }
+
+  function drawND(c, r, d, pos){
+    bezel(c, r);
+    c.save(); rr(c, r.x, r.y, r.w, r.h, 4); c.clip();
+    c.fillStyle = '#02050a'; c.fillRect(r.x, r.y, r.w, r.h);
+    var mono = 'ui-monospace,Menlo,monospace', fs = Math.max(9, r.h/18);
+    var cx = r.x + r.w/2, cy = r.y + r.h*.8, R = Math.min(r.w*.47, r.h*.66);
+    var rt = d.call ? cache.route.get(d.call) : null, dest = rt && rt.destination && rt.destination.latitude!=null ? rt.destination : null, org = rt && rt.origin && rt.origin.latitude!=null ? rt.origin : null;
+    var dDest = dest ? km(pos[0], pos[1], dest.latitude, dest.longitude)/1.852 : null;
+    var range = dDest!=null ? nearNm(dDest*1.05) : 40; if(range < 20) range = 20;
+    var ppn = R/range;
+    // Kompassring
+    c.save(); c.translate(cx, cy); c.lineWidth = 1.2;
+    c.strokeStyle = '#d8e2ec'; c.fillStyle = '#d8e2ec'; c.font = '600 ' + (fs*.85) + 'px ' + mono; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for(var a=0; a<360; a+=5){
+      var rel = angDiff(cs.hdg, a); if(Math.abs(rel) > 62) continue;
+      var an = (rel - 90)*RAD, l = a%10===0 ? 8 : 4;
+      c.beginPath(); c.moveTo(Math.cos(an)*R, Math.sin(an)*R); c.lineTo(Math.cos(an)*(R+l), Math.sin(an)*(R+l)); c.stroke();
+      if(a%30===0){
+        var lab = a===0?'N':a===90?'E':a===180?'S':a===270?'W':String(a/10);
+        c.fillText(lab, Math.cos(an)*(R+fs*1.35), Math.sin(an)*(R+fs*1.35));
+      }
+    }
+    c.beginPath(); c.arc(0, 0, R, (-90-62)*RAD, (-90+62)*RAD); c.stroke();
+    // Avstandsringer
+    c.setLineDash([3,4]); c.strokeStyle = '#4b5b6b';
+    c.beginPath(); c.arc(0, 0, R/2, (-90-70)*RAD, (-90+70)*RAD); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = '#7f93a6'; c.font = (fs*.75) + 'px ' + mono; c.textAlign = 'left'; c.fillText(String(range/2), 6, -R/2);
+    // Kartinnhold (nord opp, rotert etter kurs)
+    function xy(lat, lon){
+      var dn = (lat - pos[0])*60, de = (lon - pos[1])*60*Math.cos(pos[0]*RAD);
+      var h = cs.hdg*RAD, fwd = dn*Math.cos(h) + de*Math.sin(h), rgt = de*Math.cos(h) - dn*Math.sin(h);
+      return [rgt*ppn, -fwd*ppn];
+    }
+    // Rute
+    if(dest){
+      var o = org ? xy(org.latitude, org.longitude) : null, t = xy(dest.latitude, dest.longitude);
+      c.strokeStyle = '#ff5ccf'; c.lineWidth = 1.8;
+      c.beginPath();
+      if(o){ c.moveTo(o[0], o[1]); c.lineTo(0, 0); }
+      c.moveTo(0, 0); c.lineTo(t[0], t[1]); c.stroke();
+      c.fillStyle = '#ff5ccf'; c.beginPath(); c.arc(t[0], t[1], 4, 0, 7); c.fill();
+      c.font = '700 ' + (fs*.9) + 'px ' + mono; c.textAlign = 'left'; c.fillText(dest.icao_code || dest.iata_code || '', t[0]+7, t[1]-2);
+    }
+    // Trafikk
+    var n = 0;
+    planes.forEach(function(q, id){
+      if(id===sel || n > 80) return;
+      var e = q.d; if(e.lat==null || e.ground) return;
+      var p2 = xy(e.lat, e.lon); if(Math.hypot(p2[0], p2[1]) > R*1.0 || p2[1] > 10) return;
+      n++;
+      var rel = (e.alt||0) - (d.alt||0), close = Math.abs(rel) < 2000;
+      c.fillStyle = close ? '#ffffff' : '#22d3ee'; c.strokeStyle = c.fillStyle;
+      c.save(); c.translate(p2[0], p2[1]); c.rotate((angDiff(cs.hdg, e.trk||0))*RAD);
+      c.beginPath(); c.moveTo(0, -5); c.lineTo(3.5, 4); c.lineTo(-3.5, 4); c.closePath(); c.fill(); c.restore();
+      c.font = (fs*.7) + 'px ' + mono; c.textAlign = 'left'; c.fillText((rel>=0?'+':'-') + String(Math.abs(Math.round(rel/100))).padStart(2,'0'), p2[0]+6, p2[1]+1);
+    });
+    // Eget fly
+    c.fillStyle = '#ffd24a'; c.strokeStyle = '#ffd24a'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(0, -9); c.lineTo(7, 8); c.lineTo(0, 4); c.lineTo(-7, 8); c.closePath(); c.fill();
+    c.restore();
+    // Tekst
+    c.fillStyle = '#d8e2ec'; c.font = '600 ' + (fs*.85) + 'px ' + mono; c.textAlign = 'left'; c.textBaseline = 'top';
+    c.fillText('GS', r.x+6, r.y+5); c.fillStyle = '#3ddc84'; c.fillText(d.gs==null?'–':Math.round(d.gs), r.x+6+fs*1.7, r.y+5);
+    c.fillStyle = '#d8e2ec'; c.fillText('TRK', r.x+6, r.y+5+fs*1.2); c.fillStyle = '#3ddc84'; c.fillText(pad3(d.trk||0), r.x+6+fs*2.4, r.y+5+fs*1.2);
+    if(dDest!=null){
+      c.textAlign = 'right'; c.fillStyle = '#ff5ccf'; c.fillText((dest.icao_code||dest.iata_code||'') + '  ' + Math.round(dDest) + ' NM', r.x+r.w-6, r.y+5);
+      if(d.gs>100){ var hrs = dDest/(d.gs); c.fillStyle = '#d8e2ec'; c.fillText('ETA ' + new Date(Date.now()+hrs*3600000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'}), r.x+r.w-6, r.y+5+fs*1.2); }
+    }
+    c.fillStyle = '#7f93a6'; c.textAlign = 'right'; c.fillText(range + ' NM', r.x+r.w-6, r.y+r.h-fs*1.3);
+    c.restore();
+  }
+
+  function drawInfo(c, r, d, pos){
+    bezel(c, r);
+    c.save(); rr(c, r.x, r.y, r.w, r.h, 4); c.clip();
+    c.fillStyle = '#03070c'; c.fillRect(r.x, r.y, r.w, r.h);
+    var mono = 'ui-monospace,Menlo,monospace', wide = r.w > r.h*1.6, fs = Math.max(10, Math.min(r.h/(wide?5.2:8.2), r.w/16, 16));
+    var rt = d.call ? cache.route.get(d.call) : null, a = cache.ac.get(d.hex);
+    var o = rt && rt.origin, t = rt && rt.destination;
+    var rows = [];
+    rows.push([d.call || d.hex.toUpperCase(), '#ffffff', 1.25]);
+    var an = (rt && rt.airline && rt.airline.name) || AIRLINES[airOf(d)] || ''; if(an) rows.push([an, '#9fb0c0', .8]);
+    if(o && t) rows.push([(o.iata_code||o.icao_code||'?') + ' → ' + (t.iata_code||t.icao_code||'?'), '#ff5ccf', 1]);
+    var ty = (a && (a.icao_type || a.type)) || d.type; if(ty) rows.push([ty + (d.reg ? '  ' + d.reg : ''), '#9fb0c0', .8]);
+    if(o && t && o.latitude!=null && t.latitude!=null){
+      var left = km(pos[0], pos[1], t.latitude, t.longitude), flown = km(o.latitude, o.longitude, pos[0], pos[1]);
+      rows.push(['Igjen ' + nb(left) + ' km', '#3ddc84', .95]);
+      rows.push(['Fløyet ' + nb(flown) + ' km', '#d8e2ec', .85]);
+    }
+    rows.push(['Mach ' + (d.mach!=null ? d.mach.toFixed(2) : '–') + '  SQK ' + (d.squawk||'–'), '#d8e2ec', .8]);
+    c.textAlign = 'left'; c.textBaseline = 'top';
+    var y = r.y + 6, maxRows = Math.floor((r.h-8)/(fs*1.25));
+    rows.slice(0, maxRows).forEach(function(ro){
+      c.font = '700 ' + (fs*ro[2]) + 'px ' + mono; c.fillStyle = ro[1]; c.fillText(ro[0], r.x+7, y, r.w-12); y += fs*ro[2]*1.25;
+    });
+    c.restore();
+  }
+
+  function cDraw(d, pos){
+    var c = cctx, L = cL; if(!c || !L) return;
+    c.clearRect(0, 0, L.W, L.H);
+    drawFrame(c, L);
+    drawPFD(c, L.pfd, d);
+    drawND(c, L.nd, d, pos);
+    drawInfo(c, L.info, d, pos);
+  }
+
+  window.addEventListener('resize', function(){ if(cockOn) cResize(); });
   $('#cclose').addEventListener('click', closeCockpit);
 
   /* ---------- Oppdateringsløkke ---------- */
