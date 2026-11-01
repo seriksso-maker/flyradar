@@ -2,7 +2,7 @@
 <html lang="nb">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Flyradar by steinar</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
   .acts button.on{color:var(--amber)}
   .leaflet-tooltip.rt{background:var(--panel);color:#cdbbff;border:1px solid var(--line);box-shadow:none;font:600 11px var(--mono);padding:2px 5px}
   .leaflet-tooltip-top.rt::before{border-top-color:var(--line)}
-  #cock{position:absolute;inset:0;z-index:2000;background:#8fb4d8;overflow:hidden;touch-action:none}
+  #cock{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:2000;background:#8fb4d8;overflow:hidden;touch-action:none}
   #cmap{position:absolute;inset:0}
   #cmap canvas{outline:none}
   #cpit{position:absolute;left:0;top:0;pointer-events:none}
@@ -1026,6 +1026,8 @@
         var ground = null;
         try{ ground = cmap.queryTerrainElevation([pos[1], pos[0]]); }catch(e){}
         if(ground!=null){ altM = Math.max(altM, ground + (d.ground ? 6 : 25)); }
+        var wantFlat = (cs.alt||0)*0.3048 > 4000;
+        if(wantFlat !== cs.flat){ cs.flat = wantFlat; try{ cmap.setTerrain(wantFlat ? null : {source:'dem', exaggeration:1}); }catch(e){} }
         var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
         var co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll);
         cmap.jumpTo(co);
