@@ -132,6 +132,7 @@
   <select id="air" aria-label="Flyselskap"><option value="">Alle flyselskap</option></select>
   <input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly">
   <label class="chk"><input id="aps" type="checkbox" checked> Flyplasser</label>
+  <select id="mapType" aria-label="Karttype"></select>
   <select id="src" aria-label="Datakilde">
     <option value="adsb">adsb.lol</option>
     <option value="airplanes">airplanes.live</option>
@@ -185,18 +186,42 @@
 
   var map = L.map('map', {zoomControl:false, minZoom:3}).setView([54, 12], 5);
   L.control.zoom({position:'bottomright'}).addTo(map);
-  // Mørkt Esri-kart (ingen API-nøkkel). OpenStreetMap sine egne servere blokkerer apper uten gyldig referer.
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    maxNativeZoom:16, maxZoom:18,
-    attribution:'Kart © Esri, HERE, Garmin, © OpenStreetMap-bidragsytere'
-  }).addTo(map);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
-    maxNativeZoom:16, maxZoom:18, opacity:.9
-  }).addTo(map);
   L.marker(HOME, {icon:L.divIcon({className:'plane', html:'<div class="home"></div>', iconSize:[12,12], iconAnchor:[6,6]}), interactive:false, keyboard:false}).addTo(map);
   var trailLine = L.polyline([], {color:'#ffb454', weight:2, opacity:.85}).addTo(map);
 
   var $ = function(s){ return document.querySelector(s); };
+
+  /* ---------- Karttyper ---------- */
+  var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+  function esri(svc, nat){ return ESRI+svc+'/MapServer/tile/{z}/{y}/{x}'; }
+  var AT_ESRI = 'Kart © Esri', AT_OSM = '© OpenStreetMap-bidragsytere';
+  var BASEMAPS = {
+    dark:  {label:'Mørkt',     layers:[[esri('Canvas/World_Dark_Gray_Base'), 16, AT_ESRI+', HERE, Garmin, '+AT_OSM], [esri('Canvas/World_Dark_Gray_Reference'), 16, '', .9]]},
+    light: {label:'Lyst',      layers:[[esri('Canvas/World_Light_Gray_Base'), 16, AT_ESRI+', HERE, Garmin, '+AT_OSM], [esri('Canvas/World_Light_Gray_Reference'), 16, '', .9]]},
+    street:{label:'Gatekart',  layers:[[esri('World_Street_Map'), 19, AT_ESRI+', HERE, Garmin, '+AT_OSM]]},
+    sat:   {label:'Satellitt', layers:[[esri('World_Imagery'), 18, AT_ESRI+', Maxar, Earthstar Geographics'], [esri('Reference/World_Boundaries_and_Places'), 16, '', .9]]},
+    topo:  {label:'Terreng',   layers:[[esri('World_Topo_Map'), 19, AT_ESRI+', HERE, Garmin, USGS, '+AT_OSM]]},
+    no:    {label:'Norge (Kartverket)', layers:[['https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', 18, '© Kartverket']]}
+  };
+  var baseGroup = L.layerGroup().addTo(map), baseKey = '';
+  function setBase(k){
+    if(!BASEMAPS[k]) k = 'dark';
+    baseKey = k; baseGroup.clearLayers();
+    BASEMAPS[k].layers.forEach(function(l){
+      baseGroup.addLayer(L.tileLayer(l[0], {maxNativeZoom:l[1], maxZoom:19, attribution:l[2]||'', opacity:l[3]||1}));
+    });
+    document.getElementById('map').setAttribute('data-base', k);
+    var sel = document.getElementById('mapType'); if(sel) sel.value = k;
+    try{ localStorage.setItem('flyradar_base', k); }catch(e){}
+  }
+  var startBase = 'dark';
+  try{ startBase = localStorage.getItem('flyradar_base') || 'dark'; }catch(e){}
+  (function(){
+    var sel = document.getElementById('mapType');
+    Object.keys(BASEMAPS).forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = 'Kart: '+BASEMAPS[k].label; sel.appendChild(o); });
+    sel.addEventListener('change', function(e){ setBase(e.target.value); });
+  })();
+  setBase(startBase);
   var mapEl = $('#map');
 
   var planes = new Map();
@@ -979,7 +1004,8 @@
       ['cors.lol', 'https://api.cors.lol/?url='+encodeURIComponent('https://api.adsb.lol/v2/point/61.3/12.2/50')],
       ['adsbdb (rute)', 'https://api.adsbdb.com/v0/callsign/SAS123'],
       ].concat(MY_PROXY ? [['Egen proxy', MY_PROXY.replace(/\/+$/,'')+'/']] : []).concat([
-      ['Kartfliser (Esri)', 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/7/36/68']
+      ['Kartfliser (Esri)', 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/7/36/68'],
+      ['Kartfliser (Kartverket)', 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/7/36/68.png']
     ]);
     var el = $('#diagp'); el.hidden = false;
     el.innerHTML = '<div class="ph"><div><div class="call">Test</div><div class="sub">'+esc(location.protocol+'//'+location.host)+'</div></div><button class="x" id="dclose" aria-label="Lukk">×</button></div><div id="dres"></div>'
