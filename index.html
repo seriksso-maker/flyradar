@@ -149,7 +149,6 @@
   <button id="menu" type="button" aria-label="Flere valg" aria-expanded="false">☰</button>
   <div id="more">
   <input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly">
-  <label class="chk"><input id="aps" type="checkbox" checked> Flyplasser</label>
   <select id="mapType" aria-label="Karttype"></select>
   <select id="src" aria-label="Datakilde">
     <option value="adsb">adsb.lol</option>
@@ -346,7 +345,7 @@
   function updateAirports(){
     var z = map.getZoom();
     apMarkers.forEach(function(o){
-      var show = showAps && (o.major || z>=7);
+      var show = true;
       if(show){ if(!apLayer.hasLayer(o.m)) apLayer.addLayer(o.m); }
       else if(apLayer.hasLayer(o.m)) apLayer.removeLayer(o.m);
     });
@@ -1425,7 +1424,6 @@
     airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
     redrawAll();
   });
-  $('#aps').addEventListener('change', function(e){ showAps = e.target.checked; updateAirports(); });
   $('#menu').addEventListener('click', function(){ var b = $('.bar'); b.classList.toggle('open'); this.setAttribute('aria-expanded', b.classList.contains('open')); });
   map.on('click', function(){ $('.bar').classList.remove('open'); });
   $('#q').addEventListener('input', function(e){ filter = e.target.value.trim().toLowerCase(); redrawAll(); });
