@@ -195,6 +195,9 @@
   <h3>Karttype</h3>
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
+  <h3 style="margin-top:14px">Vær</h3>
+  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button></div>
+  <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
 </div>
 
 <button class="fab" id="bLoc" type="button" aria-label="Min posisjon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
@@ -1511,6 +1514,29 @@
   $('#dAir').onclick = function(){ openSheet('#shAir', '#dAir'); };
   $('#dQ').onclick = function(){ openSheet('#shQ', '#dQ'); if(!$('#shQ').hidden) setTimeout(function(){ $('#q').focus(); }, 50); };
   $('#sTest').onclick = function(){ closeSheets(); $('#diag').click(); };
+  /* Værradar (nedbør) fra RainViewer, lagt over kartet */
+  map.createPane('radar'); map.getPane('radar').style.zIndex = 250; map.getPane('radar').style.pointerEvents = 'none';
+  var radarOn = false, radarLayer = null, radarTimer = null;
+  try{ radarOn = localStorage.getItem('flyradar_radar') === '1'; }catch(e){}
+  function radarNote(txt){ var n = $('#radarNote'); n.textContent = txt || ''; n.hidden = !txt; }
+  function radarLoad(){
+    if(!radarOn) return;
+    fetch('https://api.rainviewer.com/public/weather-maps.json').then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(j){
+      var f = j.radar && j.radar.past && j.radar.past[j.radar.past.length-1]; if(!f) throw new Error('ingen data');
+      var layer = L.tileLayer(j.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png', {pane:'radar', opacity:.65, maxNativeZoom:7, maxZoom:19, attribution:'Radar © RainViewer'});
+      if(radarLayer) map.removeLayer(radarLayer);
+      radarLayer = layer; if(radarOn) layer.addTo(map);
+      radarNote('Radar fra ' + new Date(f.time*1000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'}) + ' · oppdateres hvert 5. minutt');
+    }).catch(function(e){ radarNote('Fikk ikke hentet radar: ' + e.message); });
+  }
+  function radarApply(){
+    $('#bRadar').classList.toggle('on', radarOn);
+    clearInterval(radarTimer);
+    if(radarOn){ radarLoad(); radarTimer = setInterval(radarLoad, 300000); }
+    else { if(radarLayer){ map.removeLayer(radarLayer); radarLayer = null; } radarNote(''); }
+  }
+  $('#bRadar').onclick = function(){ radarOn = !radarOn; try{ localStorage.setItem('flyradar_radar', radarOn ? '1' : '0'); }catch(e){} radarApply(); };
+  radarApply();
   var meMark = null;
   $('#bLoc').onclick = function(){
     if(!navigator.geolocation){ setStat('err', 'Posisjon støttes ikke'); return; }
