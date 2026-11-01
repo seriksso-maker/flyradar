@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flyradar by steinar</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: fullskjerm mørkt kart, flytende verktøylinje øverst, detaljpanel til høyre (bunnark på mobil) */
+  :root{
+    --bg:#0a1017; --panel:rgba(12,19,27,.94); --line:#1e2b39; --fg:#dbe6ef; --mute:#7b8fa3;
+    --amber:#ffb454; --cyan:#59d0ff; --ok:#4fd18b; --bad:#ff6b6b;
+    --ui:'Barlow',system-ui,sans-serif; --cond:'Barlow Condensed','Barlow',sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 var(--ui)}
+  #map{position:absolute;inset:0;background:var(--bg)}
+  .leaflet-container{font-family:var(--ui)}
+  .leaflet-control-attribution{background:rgba(10,16,23,.7)!important;color:var(--mute)!important}
+  .leaflet-control-attribution a{color:var(--mute)!important}
+
+  .bar{position:absolute;z-index:500;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:none}
+  .bar>*{pointer-events:auto}
+  .brand{font:700 20px var(--cond);letter-spacing:.03em;padding:6px 12px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+  .brand .by{font:500 14px var(--ui);letter-spacing:0;color:var(--mute);margin-left:2px}
+  .brand b{color:var(--amber);font-weight:700}
+  input[type=search],select,button{font:500 14px var(--ui);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:36px;box-sizing:border-box}
+  input[type=search]{width:220px;max-width:100%}
+  button{cursor:pointer}
+  button:hover,select:hover{border-color:var(--mute)}
+  :focus-visible{outline:2px solid var(--cyan);outline-offset:1px}
+  .chk{display:flex;align-items:center;gap:6px;padding:0 10px;min-height:36px;background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;user-select:none}
+
+  .status{position:absolute;z-index:500;left:12px;bottom:28px;padding:8px 12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font:12px var(--mono);display:flex;flex-direction:column;gap:6px;max-width:calc(100% - 100px)}
+  .status .row{display:flex;align-items:center;gap:8px}
+  #dot{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+  #dot.ok{background:var(--ok)} #dot.load{background:var(--amber)} #dot.err{background:var(--bad)}
+  .ramp{height:6px;border-radius:3px;background:linear-gradient(90deg,hsl(30,90%,60%),hsl(115,90%,60%),hsl(200,90%,60%))}
+  .ramp-l{display:flex;justify-content:space-between;color:var(--mute);font-size:10px}
+
+  aside{position:absolute;z-index:600;top:60px;right:12px;width:330px;max-height:calc(100% - 100px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+  aside[hidden]{display:none}
+  .ph{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 14px 10px;border-bottom:1px solid var(--line)}
+  .call{font:700 32px/1 var(--cond);letter-spacing:.04em}
+  .sub{color:var(--mute);margin-top:4px;font-size:13px}
+  .x{border:0;background:none;font-size:22px;line-height:1;padding:2px 8px;min-height:0;color:var(--mute)}
+  .route{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .route .ap{font:600 26px var(--cond);letter-spacing:.05em}
+  .route .arrow{color:var(--amber);flex:none}
+  .route small{display:block;color:var(--mute);font:400 11px var(--ui);letter-spacing:0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+  .grid div{background:var(--panel);padding:10px 14px}
+  .grid label{display:block;color:var(--mute);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .grid span{font:500 15px var(--mono);font-variant-numeric:tabular-nums}
+  .grid em{font:400 11px var(--ui);font-style:normal;color:var(--mute);margin-left:4px}
+  .hd{position:relative;display:flex;border-bottom:1px solid var(--line)}
+  .hl{flex:1;min-width:0;padding:14px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{font:600 12px var(--ui);padding:2px 7px;border-radius:5px;background:#3a4450;color:#e6eef5}
+  .chip.blue{background:#14609e;color:#fff}
+  .chip.red{background:#b3261e;color:#fff}
+  .air{margin-top:8px;font:500 17px/1.25 var(--ui)}
+  .pic{position:relative;width:42%;min-height:100px;flex:none;background:#10202e}
+  .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .pic small{position:absolute;left:6px;bottom:4px;font-size:10px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000}
+  .hd .x{position:absolute;top:6px;right:6px;width:28px;height:28px;padding:0;border-radius:50%;background:rgba(10,16,23,.65);color:#fff;font-size:20px}
+  .rt2{padding:12px 14px;border-bottom:1px solid var(--line)}
+  .rp{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+  .rp>div:last-child{text-align:right}
+  .rp .rc{font:600 30px/1 var(--cond);letter-spacing:.05em}
+  .rp small{display:block;margin-top:2px;color:var(--mute);font:400 11px var(--ui);text-transform:uppercase;letter-spacing:.04em}
+  .rp .arrow{color:var(--amber)}
+  .prog{height:4px;background:var(--line);border-radius:2px;margin-top:12px;overflow:hidden}
+  .prog i{display:block;height:100%;background:var(--amber)}
+  .bl{display:flex;justify-content:space-between;gap:8px;margin-top:6px;color:var(--mute);font-size:12px}
+  .grid .wide{grid-column:1/-1}
+  .acts{display:flex;gap:1px;background:var(--line);border-top:1px solid var(--line)}
+  .acts button{flex:1;border:0;border-radius:0;background:var(--panel);padding:10px 4px;color:var(--mute);font-weight:600}
+  .acts button.on{color:var(--amber)}
+  .leaflet-tooltip.rt{background:var(--panel);color:#cdbbff;border:1px solid var(--line);box-shadow:none;font:600 11px var(--mono);padding:2px 5px}
+  .leaflet-tooltip-top.rt::before{border-top-color:var(--line)}
+  #cock{position:absolute;inset:0;z-index:900;background:linear-gradient(#3f7fc4 0%,#9cc7e8 45%,#d6e4ec 52%,#5d6b57 53%)}
+  #cmap{position:absolute;inset:0}
+  .cframe{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .ctop{position:absolute;z-index:3;left:calc(8% + 6px);top:calc(7% + 4px);display:flex;flex-direction:column;gap:2px;font:500 12px var(--mono);color:#fff;text-shadow:0 0 4px #000,0 0 4px #000}
+  .ctop b{font:700 22px var(--cond);letter-spacing:.05em}
+  .chud{position:absolute;z-index:3;left:0;right:0;bottom:0;height:22%;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;padding:0 3%;gap:4px}
+  .chud div{text-align:center;min-width:0}
+  .chud label{display:block;color:#7b8fa3;font-size:10px;text-transform:uppercase;letter-spacing:.1em}
+  .chud span{font:500 17px var(--mono);color:#ffb454;font-variant-numeric:tabular-nums}
+  .cattr{position:absolute;z-index:3;right:6px;bottom:3px;font-size:9px;color:#5f7284}
+  .cmsg{position:absolute;z-index:4;left:50%;top:40%;transform:translateX(-50%);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;text-align:center;max-width:80%}
+  #cclose{position:absolute;z-index:5;top:12px;right:12px}
+  #air{min-width:190px;max-width:100%}
+  #air.on{border-color:var(--amber);color:var(--amber)}
+  .photo{display:block;width:100%;max-height:150px;object-fit:cover;border-bottom:1px solid var(--line)}
+  .note{padding:10px 14px;color:var(--mute);font-size:12px}
+
+  .plane{background:none;border:0}
+  .pl{position:relative;width:28px;height:28px}
+  .pl svg{width:28px;height:28px;display:block;filter:drop-shadow(0 0 2px #000)}
+  .pl.gnd svg{opacity:.5}
+  .pl.sel::before{content:"";position:absolute;inset:-3px;border:1.5px solid var(--amber);border-radius:50%}
+  .pl img.lg{display:none;position:absolute;right:-9px;top:-9px;width:15px;height:15px;border-radius:50%;background:#fff;border:1px solid #0a1017;object-fit:contain}
+  #map.logos .pl img.lg{display:block}
+  .call img.big{width:28px;height:28px;border-radius:50%;background:#fff;vertical-align:-5px;margin-right:8px;object-fit:contain}
+  .lb{display:none;position:absolute;left:27px;top:7px;font:500 11px var(--mono);color:#cfe3f3;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;pointer-events:none}
+  #map.labels .lb{display:block}
+  .ap{position:relative;width:10px;height:10px}
+  .ap i{position:absolute;inset:0;border:2px solid #9fd8ff;background:#0a1017;border-radius:2px;transform:rotate(45deg)}
+  .ap b{display:none;position:absolute;left:13px;top:-3px;font:500 10px var(--mono);color:#9fd8ff;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
+  #map.aplab .ap b{display:block}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
+  .leaflet-popup-content{font:14px/1.4 var(--ui);margin:10px 14px}
+  .leaflet-container a.leaflet-popup-close-button{color:var(--mute)}
+  .home{width:12px;height:12px;border-radius:50%;background:var(--amber);border:2px solid #0a1017;box-shadow:0 0 0 2px var(--amber)}
+
+  @media (max-width:640px){
+    aside{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:55%}
+    .status{bottom:auto;top:auto;left:8px;bottom:calc(8px + 0px)}
+    aside:not([hidden]) ~ .status{display:none}
+    input[type=search]{width:150px}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div class="bar">
+  <div class="brand">Fly<b>radar</b> <span class="by">by steinar</span></div>
+  <select id="air" aria-label="Flyselskap"><option value="">Alle flyselskap</option></select>
+  <input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly">
+  <label class="chk"><input id="aps" type="checkbox" checked> Flyplasser</label>
+  <select id="src" aria-label="Datakilde">
+    <option value="adsb">adsb.lol</option>
+    <option value="airplanes">airplanes.live</option>
+    <option value="adsbfi">adsb.fi</option>
+    <option value="opensky">OpenSky</option>
+  </select>
+  <button id="diag" type="button">Test</button>
+</div>
+
+<aside id="panel" hidden></aside>
+<aside id="diagp" hidden style="z-index:700"></aside>
+
+<div id="cock" hidden>
+  <div id="cmap"></div>
+  <svg class="cframe" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id="gs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a323c"/><stop offset="1" stop-color="#0c1015"/></linearGradient></defs>
+    <path fill="#0c1015" fill-rule="evenodd" d="M0 0H100V100H0Z M7 7 Q50 2 93 7 L97 76 H3 Z"/>
+    <rect x="48.7" y="3" width="2.6" height="73" fill="#0c1015"/>
+    <rect x="0" y="73.5" width="100" height="3.5" fill="url(#gs)"/>
+  </svg>
+  <div class="ctop"><b id="hCall"></b><span id="hRoute"></span></div>
+  <div class="chud">
+    <div><label>Fart</label><span id="hSpd">–</span></div>
+    <div><label>Kurs</label><span id="hHdg">–</span></div>
+    <div><label>Høyde</label><span id="hAlt">–</span></div>
+    <div><label>Stigning</label><span id="hVs">–</span></div>
+  </div>
+  <div class="cattr">Bilder: Esri World Imagery · Terreng: AWS/Mapzen</div>
+  <div id="cmsg" class="cmsg" hidden></div>
+  <button id="cclose" type="button">Tilbake til kart</button>
+</div>
+
+<div class="status">
+  <div class="row"><i id="dot"></i><span id="stat">Laster …</span></div>
+  <div><div class="ramp"></div><div class="ramp-l"><span>0 ft</span><span>20 000</span><span>40 000 ft</span></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+(function(){
+  'use strict';
+  if(typeof L==='undefined'){
+    document.body.insertAdjacentHTML('beforeend','<p style="position:absolute;z-index:999;top:70px;left:12px;right:12px;padding:12px;background:#2a1216;border:1px solid #ff6b6b;border-radius:6px">Kartbiblioteket (Leaflet) ble ikke lastet. Sjekk internett, og åpne filen direkte i nettleseren (Chrome/Safari/Firefox), ikke i en forhåndsvisning.</p>');
+    return;
+  }
+  window.addEventListener('error', function(ev){
+    var s=document.getElementById('stat'); if(s) s.textContent='Feil: '+ev.message;
+  });
+  var HOME = [61.3155, 12.2625]; // Trysil
+  var PLANE_PATH = 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
+
+  var map = L.map('map', {zoomControl:false, minZoom:3}).setView([54, 12], 5);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+  // Mørkt Esri-kart (ingen API-nøkkel). OpenStreetMap sine egne servere blokkerer apper uten gyldig referer.
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom:16, maxZoom:18,
+    attribution:'Kart © Esri, HERE, Garmin, © OpenStreetMap-bidragsytere'
+  }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+    maxNativeZoom:16, maxZoom:18, opacity:.9
+  }).addTo(map);
+  L.marker(HOME, {icon:L.divIcon({className:'plane', html:'<div class="home"></div>', iconSize:[12,12], iconAnchor:[6,6]}), interactive:false, keyboard:false}).addTo(map);
+  var trailLine = L.polyline([], {color:'#ffb454', weight:2, opacity:.85}).addTo(map);
+
+  var $ = function(s){ return document.querySelector(s); };
+  var mapEl = $('#map');
+
+  var planes = new Map();
+  var sel = null, filter = '', showGround = false, src = 'adsb';
+  var cache = {route:new Map(), ac:new Map()};
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function nb(n){ return Math.round(n).toLocaleString('nb-NO'); }
+
+  /* ---------- Flyplasser (Norge og Sverige) ---------- */
+  // [IATA, navn, bredde, lengde, stor flyplass (1)]
+  var AIRPORTS = [
+    // Norge
+    ['OSL','Oslo lufthavn, Gardermoen',60.194,11.100,1],['BGO','Bergen lufthavn, Flesland',60.293,5.218,1],
+    ['SVG','Stavanger lufthavn, Sola',58.877,5.638,1],['TRD','Trondheim lufthavn, Værnes',63.458,10.924,1],
+    ['TOS','Tromsø lufthavn',69.683,18.919,1],['BOO','Bodø lufthavn',67.269,14.365,1],
+    ['AES','Ålesund lufthavn, Vigra',62.562,6.120,1],['KRS','Kristiansand lufthavn, Kjevik',58.204,8.085,1],
+    ['TRF','Sandefjord lufthavn, Torp',59.187,10.259,1],['HAU','Haugesund lufthavn, Karmøy',59.345,5.208,0],
+    ['MOL','Molde lufthavn, Årø',62.745,7.263,0],['KSU','Kristiansund lufthavn, Kvernberget',63.112,7.825,0],
+    ['EVE','Harstad/Narvik lufthavn, Evenes',68.491,16.678,0],['ALF','Alta lufthavn',69.976,23.372,0],
+    ['LKL','Lakselv lufthavn, Banak',70.069,24.973,0],['KKN','Kirkenes lufthavn, Høybuktmoen',69.726,29.891,0],
+    ['HVG','Honningsvåg lufthavn, Valan',70.987,25.830,0],['VDS','Vadsø lufthavn',70.065,29.845,0],
+    ['HFT','Hammerfest lufthavn',70.680,23.669,0],['BDU','Bardufoss lufthavn',69.056,18.540,0],
+    ['SVJ','Svolvær lufthavn, Helle',68.243,14.669,0],['LKN','Leknes lufthavn',68.153,13.609,0],
+    ['MQN','Mo i Rana lufthavn, Røssvoll',66.364,14.301,0],['MJF','Mosjøen lufthavn, Kjærstad',65.784,13.215,0],
+    ['SSJ','Sandnessjøen lufthavn, Stokka',65.957,12.469,0],['BNN','Brønnøysund lufthavn, Brønnøy',65.461,12.217,0],
+    ['RVK','Rørvik lufthavn, Ryum',64.838,11.146,0],['OSY','Namsos lufthavn',64.472,11.579,0],
+    ['OLA','Ørland lufthavn',63.699,9.604,0],['RRS','Røros lufthavn',62.578,11.342,0],
+    ['FRO','Florø lufthavn',61.584,5.025,0],['SOG','Sogndal lufthavn, Haukåsen',61.156,7.138,0],
+    ['FDE','Førde lufthavn, Bringeland',61.391,5.757,0],['HOV','Ørsta/Volda lufthavn, Hovden',62.180,6.074,0],
+    ['SKE','Skien lufthavn, Geiteryggen',59.185,9.567,0],['VDB','Fagernes lufthavn, Leirin',61.016,9.288,0],
+    ['SKN','Stokmarknes lufthavn, Skagen',68.579,15.026,0],['ANX','Andenes lufthavn, Andøya',69.293,16.144,0],
+    ['SOJ','Sørkjosen lufthavn',69.787,20.959,0],['MEH','Mehamn lufthavn',71.030,27.827,0],
+    ['BJF','Båtsfjord lufthavn',70.600,29.691,0],['LYR','Svalbard lufthavn, Longyear',78.246,15.466,0],
+    // Sverige
+    ['ARN','Stockholm Arlanda',59.652,17.919,1],['BMA','Stockholm Bromma',59.354,17.942,1],
+    ['NYO','Stockholm Skavsta',58.789,16.912,0],['GOT','Göteborg Landvetter',57.663,12.280,1],
+    ['GSE','Göteborg City',57.775,11.870,0],['MMX','Malmö',55.536,13.376,1],
+    ['LLA','Luleå',65.544,22.122,1],['UME','Umeå',63.792,20.283,1],
+    ['OSD','Östersund Åre',63.194,14.500,1],['SDL','Sundsvall-Härnösand',62.528,17.444,0],
+    ['KRN','Kiruna',67.822,20.337,1],['GEV','Gällivare',67.132,20.815,0],
+    ['SFT','Skellefteå',64.625,21.077,0],['AJR','Arvidsjaur',65.590,19.282,0],
+    ['HMV','Hemavan Tärnaby',65.806,15.083,0],['VHM','Vilhelmina',64.579,16.834,0],
+    ['LYC','Lycksele',64.548,18.716,0],['OER','Örnsköldsvik',63.408,18.990,0],
+    ['KRF','Kramfors Sollefteå',63.049,17.769,0],['HUV','Hudiksvall',61.768,17.081,0],
+    ['SOO','Söderhamn',61.266,17.099,0],['GVX','Gävle Sandviken',60.593,16.951,0],
+    ['BLE','Borlänge Dala',60.422,15.515,0],['MXX','Mora Siljan',60.958,14.511,0],
+    ['SCR','Scandinavian Mountains (Sälen/Trysil)',61.038,13.102,0],['EVG','Sveg',62.048,14.423,0],
+    ['TYF','Torsby',60.158,12.991,0],['KSD','Karlstad',59.445,13.337,0],
+    ['ORB','Örebro',59.224,15.038,0],['VST','Västerås',59.589,16.634,0],
+    ['NRK','Norrköping Kungsängen',58.586,16.251,0],['LPI','Linköping',58.406,15.681,0],
+    ['JKG','Jönköping',57.758,14.069,0],['THN','Trollhättan-Vänersborg',58.318,12.345,0],
+    ['VXO','Växjö Småland',56.929,14.728,0],['KLR','Kalmar Öland',56.686,16.288,0],
+    ['RNB','Ronneby',56.267,15.265,0],['HAD','Halmstad',56.691,12.820,0],
+    ['AGH','Ängelholm-Helsingborg',56.296,12.847,0],['KID','Kristianstad',55.922,14.086,0],
+    ['VBY','Visby',57.663,18.346,0],['PJA','Pajala',67.246,23.069,0],
+    // Danmark og Finland
+    ['CPH','København Kastrup',55.618,12.651,1],['BLL','Billund',55.740,9.152,0],['AAL','Aalborg',57.093,9.849,0],
+    ['HEL','Helsinki-Vantaa',60.317,24.963,1],['OUL','Oulu',64.930,25.355,0],['TKU','Turku',60.514,22.268,0],
+    ['TMP','Tampere-Pirkkala',61.414,23.604,0],['RVN','Rovaniemi',66.565,25.830,0],
+    // Island og Baltikum
+    ['KEF','Keflavik',63.985,-22.606,1],['RIX','Riga',56.924,23.971,0],['VNO','Vilnius',54.634,25.286,0],['TLL','Tallinn',59.413,24.833,0],
+    // Storbritannia og Irland
+    ['LHR','London Heathrow',51.470,-0.454,1],['LGW','London Gatwick',51.154,-0.182,0],['MAN','Manchester',53.354,-2.275,1],
+    ['EDI','Edinburgh',55.950,-3.372,0],['GLA','Glasgow',55.872,-4.433,0],['BHX','Birmingham',52.454,-1.748,0],['DUB','Dublin',53.421,-6.270,1],
+    // Mellom-Europa
+    ['AMS','Amsterdam Schiphol',52.311,4.768,1],['BRU','Brussel',50.901,4.484,1],['CDG','Paris Charles de Gaulle',49.010,2.548,1],
+    ['ORY','Paris Orly',48.723,2.379,0],['FRA','Frankfurt',50.038,8.562,1],['MUC','München',48.354,11.786,1],
+    ['BER','Berlin Brandenburg',52.367,13.503,1],['HAM','Hamburg',53.630,9.988,0],['DUS','Düsseldorf',51.290,6.767,0],
+    ['CGN','Köln/Bonn',50.866,7.143,0],['STR','Stuttgart',48.690,9.222,0],['ZRH','Zürich',47.458,8.548,1],['GVA','Genève',46.238,6.109,0],
+    ['VIE','Wien',48.110,16.570,1],['PRG','Praha',50.101,14.260,1],['WAW','Warszawa Chopin',52.166,20.967,1],
+    ['KRK','Kraków',50.078,19.785,0],['GDN','Gdańsk',54.378,18.466,0],['BUD','Budapest',47.437,19.256,1],
+    // Sør-Europa
+    ['MAD','Madrid',40.472,-3.563,1],['BCN','Barcelona',41.297,2.083,1],['AGP','Málaga',36.675,-4.499,0],['PMI','Palma de Mallorca',39.552,2.739,0],
+    ['LIS','Lisboa',38.774,-9.134,1],['OPO','Porto',41.248,-8.681,0],['FCO','Roma Fiumicino',41.800,12.239,1],
+    ['MXP','Milano Malpensa',45.631,8.728,1],['VCE','Venezia',45.505,12.352,0],['NAP','Napoli',40.886,14.291,0],
+    ['ATH','Athen',37.936,23.945,1],['IST','Istanbul',41.275,28.752,1],['SAW','Istanbul Sabiha Gökçen',40.899,29.309,0],
+    ['OTP','București Otopeni',44.571,26.085,0],['SOF','Sofia',42.695,23.406,0],['BEG','Beograd',44.818,20.309,0],['ZAG','Zagreb',45.743,16.069,0]
+  ];
+  var showAps = true, apLayer = L.layerGroup().addTo(map), apMarkers = [];
+  AIRPORTS.forEach(function(a){
+    var m = L.marker([a[2],a[3]], {
+      icon:L.divIcon({className:'plane', html:'<div class="ap"><i></i><b>'+a[0]+'</b></div>', iconSize:[10,10], iconAnchor:[5,5]}),
+      zIndexOffset:-1000, keyboard:false
+    });
+    m.bindPopup('<b>'+esc(a[1])+'</b><br>'+a[0]);
+    apMarkers.push({m:m, major:!!a[4]});
+  });
+  function updateAirports(){
+    var z = map.getZoom();
+    apMarkers.forEach(function(o){
+      var show = showAps && (o.major || z>=7);
+      if(show){ if(!apLayer.hasLayer(o.m)) apLayer.addLayer(o.m); }
+      else if(apLayer.hasLayer(o.m)) apLayer.removeLayer(o.m);
+    });
+    mapEl.classList.toggle('aplab', z>=6);
+  }
+  map.on('zoomend', updateAirports); updateAirports();
+
+  /* ---------- Flyselskap ---------- */
+  var AIRLINES = {
+    SAS:'SAS', NOZ:'Norwegian', NAX:'Norwegian', NSZ:'Norwegian', WIF:'Widerøe', DLH:'Lufthansa', CLH:'Lufthansa CityLine',
+    RYR:'Ryanair', RYS:'Ryanair Sun', EZY:'easyJet', EJU:'easyJet Europe', BAW:'British Airways', AFR:'Air France', KLM:'KLM',
+    FIN:'Finnair', SWR:'Swiss', AUA:'Austrian', EWG:'Eurowings', VLG:'Vueling', WZZ:'Wizz Air', LOT:'LOT', IBE:'Iberia',
+    ICE:'Icelandair', THY:'Turkish Airlines', UAE:'Emirates', QTR:'Qatar Airways', SIA:'Singapore Airlines', ETD:'Etihad',
+    DAL:'Delta', UAL:'United', AAL:'American', ACA:'Air Canada', CFG:'Condor', TVS:'Smartwings', SKX:'Skyways',
+    FDX:'FedEx', UPS:'UPS', DHK:'DHL', BCS:'European Air Transport', CLX:'Cargolux', ELY:'El Al', SXS:'SunExpress',
+    TAP:'TAP Air Portugal', AEE:'Aegean', BEL:'Brussels Airlines', EIN:'Aer Lingus', NJE:'NetJets Europe', AFL:'Aeroflot',
+    CAI:'Corendon', BRX:'Braathens Regional', DTR:'Danish Air Transport', NSK:'Nordic Seaplanes'
+  };
+  // ICAO-prefiks (fra callsign) til IATA-kode, brukt til å hente logoer
+  var IATA = {
+    SAS:'SK', NOZ:'DY', NAX:'DY', NSZ:'D8', WIF:'WF', DLH:'LH', CLH:'CL', RYR:'FR', EZY:'U2', EJU:'EC', BAW:'BA', AFR:'AF',
+    KLM:'KL', FIN:'AY', SWR:'LX', AUA:'OS', EWG:'EW', VLG:'VY', WZZ:'W6', LOT:'LO', IBE:'IB', ICE:'FI', THY:'TK', UAE:'EK',
+    QTR:'QR', SIA:'SQ', ETD:'EY', DAL:'DL', UAL:'UA', AAL:'AA', ACA:'AC', CFG:'DE', TVS:'QS', SKX:'JZ', FDX:'FX', UPS:'5X',
+    BCS:'QY', CLX:'CV', ELY:'LY', SXS:'XQ', TAP:'TP', AEE:'A3', BEL:'SN', EIN:'EI', AFL:'SU', DTR:'DX', CAI:'XC'
+  };
+  function logoHtml(d, cls){
+    var i = IATA[airOf(d)];
+    if(!i) return '';
+    return '<img class="'+cls+'" alt="" src="https://pics.avs.io/al_square/64/64/'+i+'.png" onerror="this.onerror=function(){this.remove()};this.src=\'https://images.kiwi.com/airlines/64x64/'+i+'.png\'">';
+  }
+  var airSel = '', airSig = '';
+  function airOf(d){ var m = /^([A-Z]{3})\d/.exec(d.call||''); return m ? m[1] : '_'; }
+  function airName(c){ return c==='_' ? 'Privat/annet' : (AIRLINES[c] || c); }
+  function airCounts(){
+    var n = {};
+    planes.forEach(function(p){ if(p.d.ground) return; var c = airOf(p.d); n[c] = (n[c]||0)+1; });
+    return n;
+  }
+  // Dropdownen viser flyselskapene som er i lufta nå, alfabetisk, med antall fly. Oppdateres ikke mens den er åpen.
+  function refreshAirOptions(){
+    var el = $('#air');
+    if(document.activeElement===el) return;
+    var cnt = airCounts(), codes = Object.keys(cnt), total = 0;
+    codes.forEach(function(c){ total += cnt[c]; });
+    if(airSel && codes.indexOf(airSel)<0) codes.push(airSel);
+    codes.sort(function(a,b){
+      if(a==='_') return 1; if(b==='_') return -1;
+      return airName(a).localeCompare(airName(b),'nb');
+    });
+    var sig = airSel+'|'+total+'|'+codes.map(function(c){ return c+(cnt[c]||0); }).join(',');
+    if(sig===airSig) return;
+    airSig = sig;
+    el.innerHTML = '<option value="">Alle flyselskap ('+total+')</option>' + codes.map(function(c){
+      return '<option value="'+esc(c)+'">'+esc(airName(c))+' ('+(cnt[c]||0)+')</option>';
+    }).join('');
+    el.value = airSel;
+    el.className = airSel ? 'on' : '';
+  }
+
+  /* ---------- Datakilder ---------- */
+  function getJSON(url, signal){
+    return fetch(url, {signal:signal}).then(function(r){
+      if(!r.ok) throw new Error(r.status===429 ? 'For mange forespørsler (429)' : 'HTTP '+r.status);
+      return r.json();
+    });
+  }
+
+  var lastHint = '', lastTiles = 1;
+  function normAdsb(j){
+    return (j.ac||j.aircraft||[]).filter(function(a){ return a.lat!=null && a.lon!=null; }).map(function(a){
+      return {
+        hex:a.hex, call:(a.flight||'').trim(), reg:a.r||'', type:a.t||'',
+        lat:a.lat, lon:a.lon, ground:a.alt_baro==='ground',
+        alt: typeof a.alt_baro==='number' ? a.alt_baro : (typeof a.alt_geom==='number' ? a.alt_geom : null),
+        gs: a.gs==null?null:a.gs, trk: a.track!=null?a.track:(a.true_heading||0),
+        vr: a.baro_rate!=null?a.baro_rate:(a.geom_rate!=null?a.geom_rate:null),
+        squawk:a.squawk||'', ias:a.ias!=null?a.ias:null, mach:a.mach!=null?a.mach:null,
+        altg:typeof a.alt_geom==='number'?a.alt_geom:null, cat:a.category||''
+      };
+    });
+  }
+
+  // Kildene gir maks 250 nm radius per forespørsel. For store kartutsnitt (Europa) deles utsnittet i flere sirkler.
+  function tilesFor(max){
+    var c = map.getCenter(), b = map.getBounds();
+    var viewNm = c.distanceTo(b.getNorthEast())/1852;
+    if(viewNm <= 250) return {tiles:[[c.lat, c.lng, Math.round(Math.max(10, viewNm))]], cut:false};
+    var R = 240, side = R*1.852*Math.SQRT2, dLat = side/111.2, tiles = [];
+    for(var la = b.getSouth()+dLat/2; la < b.getNorth()+dLat/2; la += dLat){
+      var cl = Math.max(0.2, Math.cos(Math.min(Math.abs(la),80)*Math.PI/180)), dLon = side/(111.2*cl);
+      for(var lo = b.getWest()+dLon/2; lo < b.getEast()+dLon/2; lo += dLon) tiles.push([la, lo, R]);
+    }
+    var k = Math.cos(c.lat*Math.PI/180);
+    tiles.sort(function(x,y){ return Math.hypot(x[0]-c.lat,(x[1]-c.lng)*k) - Math.hypot(y[0]-c.lat,(y[1]-c.lng)*k); });
+    var MAX = max || 1;
+    return {tiles:tiles.slice(0, MAX), cut:tiles.length > MAX};
+  }
+
+  // Kjører oppgaver med maks n samtidig, så gratis proxyer ikke blir overbelastet
+  function pool(items, n, fn){
+    return new Promise(function(res){
+      var i = 0, active = 0;
+      function next(){
+        if(i>=items.length && active===0) return res();
+        while(active<n && i<items.length){
+          active++;
+          fn(items[i++]).then(done, done);
+        }
+      }
+      function done(){ active--; next(); }
+      next();
+    });
+  }
+
+  // maxTiles: 1 for gratis offentlige kilder (skånsomt), flere for lokal server
+  function adsbSource(name, urlFn, maxTiles){
+    return function(signal, probe){
+      var t = tilesFor(maxTiles||1), tiles = probe ? [t.tiles[0]] : t.tiles;
+      var okCount = 0, lastErr = null, aborted = null, byHex = {}, fb = false;
+      function one(x){
+        return getJSON(urlFn(x[0].toFixed(3), x[1].toFixed(3), x[2]), signal).then(function(j){
+          okCount++;
+          normAdsb(j).forEach(function(a){ if(a.hex) byHex[a.hex] = a; });
+        }).catch(function(e){ if(e.name==='AbortError') aborted = e; else lastErr = e; });
+      }
+      return pool(tiles, 3, one).then(function(){
+        if(aborted) throw aborted;
+        if(!okCount && tiles.length>1){   // alle flisene feilet: prøv bare midten av kartet
+          var c = map.getCenter(); fb = true;
+          return one([c.lat, c.lng, 240]);
+        }
+      }).then(function(){
+        if(aborted) throw aborted;
+        if(!okCount) throw lastErr || new Error('ingen svar');
+        if(!probe){
+          lastTiles = fb ? 1 : tiles.length;
+          lastHint = fb ? ' · bare midten (kilden begrenser)' : (t.cut ? (maxTiles>1 ? ' · zoom inn for flere fly' : ' · kun midten av kartet (egen proxy gir hele Europa)') : (okCount<tiles.length ? ' · delvis dekning' : ''));
+        }
+        return Object.keys(byHex).map(function(h){ return byHex[h]; });
+      });
+    };
+  }
+
+  function fetchOpenSky(signal){
+    var b = map.getBounds();
+    var lamin = Math.max(-90,b.getSouth()), lamax = Math.min(90,b.getNorth());
+    var lomin = Math.max(-180,b.getWest()), lomax = Math.min(180,b.getEast());
+    var url = 'https://opensky-network.org/api/states/all?lamin='+lamin.toFixed(3)+'&lomin='+lomin.toFixed(3)+'&lamax='+lamax.toFixed(3)+'&lomax='+lomax.toFixed(3);
+    return getJSON(url, signal).then(function(j){
+      return (j.states||[]).filter(function(s){ return s[5]!=null && s[6]!=null; }).map(function(s){
+        var altM = s[13]!=null ? s[13] : s[7];
+        return {
+          hex:s[0], call:(s[1]||'').trim(), reg:'', type:'',
+          lat:s[6], lon:s[5], ground:!!s[8],
+          alt: altM!=null ? altM*3.28084 : null,
+          gs: s[9]!=null ? s[9]*1.94384 : null, trk: s[10]!=null?s[10]:0,
+          vr: s[11]!=null ? s[11]*196.85 : null, squawk:s[14]||''
+        };
+      });
+    });
+  }
+
+  var SRC = {
+    adsb:    {label:'adsb.lol',     every:5000,  fetch:adsbSource('adsb.lol', function(la,lo,r){ return 'https://api.adsb.lol/v2/point/'+la+'/'+lo+'/'+r; })},
+    airplanes:{label:'airplanes.live', every:5000, fetch:adsbSource('airplanes.live', function(la,lo,r){ return 'https://api.airplanes.live/v2/point/'+la+'/'+lo+'/'+r; })},
+    adsbfi:  {label:'adsb.fi',      every:5000,  fetch:adsbSource('adsb.fi', function(la,lo,r){ return 'https://opendata.adsb.fi/api/v2/lat/'+la+'/lon/'+lo+'/dist/'+r; })},
+    opensky: {label:'OpenSky',      every:12000, fetch:fetchOpenSky}
+  };
+  // Nettlesere kan ikke kalle adsb.lol o.l. direkte (mangler CORS-header). Løsninger: lokal server (flyradar_server.py) eller offentlig CORS-proxy.
+  function viaProxy(wrap, label){
+    return {label:label, every:6000, fetch:adsbSource(label, function(la,lo,r){
+      return wrap('https://api.adsb.lol/v2/point/'+la+'/'+lo+'/'+r);
+    })};
+  }
+  SRC.local  = {label:'Lokal server', every:4000, fetch:adsbSource('local', function(la,lo,r){ return '/adsb/point/'+la+'/'+lo+'/'+r; }, 8)};
+  SRC.proxy1 = viaProxy(function(u){ return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u); }, 'adsb.lol via allorigins');
+  SRC.proxy2 = viaProxy(function(u){ return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u); }, 'adsb.lol via codetabs');
+  SRC.adsbone = {label:'adsb.one', every:5000, fetch:adsbSource('adsb.one', function(la,lo,r){ return 'https://api.adsb.one/v2/point/'+la+'/'+lo+'/'+r; })};
+  // Egen proxy: lim inn adressen til din Cloudflare Worker (Test-knappen), eller sett MY_PROXY her.
+  var MY_PROXY = 'https://flyradar.seriksso.workers.dev';
+  try{ MY_PROXY = localStorage.getItem('flyradar_proxy') || MY_PROXY; }catch(e){}
+  function mineSource(base){
+    return function(signal, probe){
+      var t = tilesFor(probe ? 1 : 12), tiles = probe ? [t.tiles[0]] : t.tiles;
+      var p = tiles.map(function(x){ return x[0].toFixed(3)+','+x[1].toFixed(3)+','+x[2]; }).join('|');
+      return getJSON(base+'/multi?p='+encodeURIComponent(p), signal).then(function(j){
+        if(!probe){ lastTiles = tiles.length; lastHint = t.cut ? ' · zoom inn for flere fly' : ''; }
+        return normAdsb(j);
+      });
+    };
+  }
+  var isHttp = /^https?:$/.test(location.protocol);
+  SRC.proxy3 = viaProxy(function(u){ return 'https://corsproxy.io/?url='+encodeURIComponent(u); }, 'adsb.lol via corsproxy.io');
+  SRC.proxy4 = viaProxy(function(u){ return 'https://thingproxy.freeboard.io/fetch/'+u; }, 'adsb.lol via thingproxy');
+  SRC.proxy5 = viaProxy(function(u){ return 'https://api.cors.lol/?url='+encodeURIComponent(u); }, 'adsb.lol via cors.lol');
+  var ORDER = (isHttp ? ['local'] : []).concat(['opensky','adsbone','adsbfi','airplanes','proxy1','proxy2','proxy3','proxy4','proxy5','adsb']);
+  function addMine(){
+    if(!MY_PROXY) return;
+    SRC.mine = {label:'Egen proxy', every:5000, fetch:mineSource(MY_PROXY.replace(/\/+$/,''))};
+    ORDER = ['mine'].concat(ORDER.filter(function(k){ return k!=='mine'; }));
+  }
+  addMine();
+  src = ORDER[0];
+  function buildSrcSelect(){
+    var sel = $('#src'); sel.innerHTML = '';
+    ORDER.forEach(function(k){ var o = document.createElement('option'); o.value = k; o.textContent = SRC[k].label; sel.appendChild(o); });
+    sel.value = src;
+  }
+  buildSrcSelect();
+
+  /* ---------- Tegning ---------- */
+  function altColor(d){
+    if(d.ground) return '#7b8fa3';
+    if(d.alt==null) return '#9fb2c4';
+    var t = Math.max(0, Math.min(1, d.alt/40000));
+    return 'hsl('+Math.round(30+170*t)+',90%,60%)';
+  }
+
+  function matches(d){
+    if(d.ground && !showGround && d.hex!==sel) return false;
+    if(airSel && d.hex!==sel && airOf(d)!==airSel) return false;
+    if(!filter) return true;
+    return (d.call+' '+d.reg+' '+d.type+' '+d.hex).toLowerCase().indexOf(filter)!==-1;
+  }
+
+  // Ytelse: bare fly i kartutsnittet får markør, ikon bygges kun om når utseendet endres, og det er tak på antall markører
+  var viewB = map.getBounds().pad(0.15), MAXMARK = window.innerWidth<700 ? 500 : 1200, budget = MAXMARK;
+  function refreshView(){
+    viewB = map.getBounds().pad(0.15);
+    var n = 0; planes.forEach(function(p){ if(p.marker && p.marker._map) n++; });
+    budget = Math.max(0, MAXMARK - n);
+  }
+
+  function iconKey(d, selected, z){
+    return Math.round((d.trk||0)/5)+'|'+(d.ground?'g':Math.round((d.alt||0)/1000))+'|'+(selected?1:0)+'|'+(z>=6?1:0)+'|'+(z>=8?(d.call||d.hex):'');
+  }
+  function iconFor(d, selected, z){
+    var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+'" style="color:'+altColor(d)+'">'
+      + '<svg viewBox="0 0 24 24" style="transform:rotate('+Math.round(d.trk||0)+'deg)" fill="currentColor"><path d="'+PLANE_PATH+'"/></svg>'
+      + (z>=6 ? logoHtml(d,'lg') : '')
+      + (z>=8 ? '<span class="lb">'+esc(d.call||d.hex)+'</span>' : '')
+      + '</div>';
+    return L.divIcon({className:'plane', html:html, iconSize:[28,28], iconAnchor:[14,14]});
+  }
+
+  function draw(hex){
+    var p = planes.get(hex); if(!p) return;
+    var d = p.d, onMap = p.marker && p.marker._map;
+    var show = matches(d) && (hex===sel || viewB.contains([d.lat, d.lon]));
+    if(!show){ if(onMap) p.marker.remove(); return; }
+    var z = map.getZoom(), selected = hex===sel, key = iconKey(d, selected, z);
+    if(!p.marker){
+      if(budget<=0) return;
+      budget--;
+      p.marker = L.marker([d.lat,d.lon], {icon:iconFor(d,selected,z), keyboard:false});
+      p.ikey = key;
+      p.marker.on('click', function(e){ L.DomEvent.stopPropagation(e); select(hex); });
+    } else {
+      if(!onMap){ if(budget<=0) return; budget--; }
+      p.marker.setLatLng([d.lat,d.lon]);
+      if(p.ikey!==key){ p.marker.setIcon(iconFor(d, selected, z)); p.ikey = key; }
+    }
+    if(!p.marker._map) p.marker.addTo(map);
+  }
+
+  function apply(list){
+    var now = performance.now(), seen = new Set();
+    refreshView();
+    list.forEach(function(a){
+      if(!a.hex) return;
+      seen.add(a.hex);
+      var p = planes.get(a.hex);
+      if(!p){ p = {trail:[]}; planes.set(a.hex, p); }
+      p.d = a; p.seen = now; p.t0 = now; p.lat0 = a.lat; p.lon0 = a.lon;
+      var last = p.trail[p.trail.length-1];
+      if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon]); if(p.trail.length>80) p.trail.shift(); }
+      draw(a.hex);
+    });
+    Array.from(planes.keys()).forEach(function(hex){
+      if(seen.has(hex) || now - planes.get(hex).seen < 60000) return;
+      var p = planes.get(hex);
+      if(p.marker) p.marker.remove();
+      planes.delete(hex);
+    });
+    refreshAirOptions();
+    if(sel){
+      var s = planes.get(sel);
+      trailLine.setLatLngs(s ? s.trail : []);
+      renderPanel();
+    }
+  }
+
+  function visibleCount(){
+    var n = 0; planes.forEach(function(p){ if(p.marker && map.hasLayer(p.marker)) n++; }); return n;
+  }
+
+  // Gjetter posisjon mellom oppdateringer så flyene beveger seg jevnt
+  setInterval(function(){
+    var now = performance.now();
+    planes.forEach(function(p){
+      var d = p.d;
+      if(!p.marker || !p.marker._map || d.ground || !(d.gs>30)) return;
+      var dt = Math.min((now-p.t0)/1000, 30);
+      var m = d.gs*0.514444*dt, r = (d.trk||0)*Math.PI/180;
+      p.marker.setLatLng([p.lat0 + m*Math.cos(r)/111320, p.lon0 + m*Math.sin(r)/(111320*Math.cos(p.lat0*Math.PI/180))]);
+    });
+    if(follow && sel){
+      var fp = planes.get(sel);
+      if(fp && fp.marker){ progPan = true; map.panTo(fp.marker.getLatLng(), {animate:false}); progPan = false; }
+    }
+  }, 1000);
+
+  /* ---------- Detaljpanel ---------- */
+  function fl(d){
+    if(d.ground) return 'På bakken';
+    if(d.alt==null) return '–';
+    return d.alt>=6000 ? 'FL'+String(Math.round(d.alt/100)).padStart(3,'0') : nb(Math.round(d.alt/50)*50)+' ft';
+  }
+
+  var showRoute = true, follow = false, more = false, routeDrawn = '', progPan = false;
+  var routeLayer = L.layerGroup().addTo(map);
+
+  function km(a, b, c, d){
+    var R = 6371, t = Math.PI/180, dLa = (c-a)*t, dLo = (d-b)*t;
+    var h = Math.sin(dLa/2)*Math.sin(dLa/2) + Math.cos(a*t)*Math.cos(c*t)*Math.sin(dLo/2)*Math.sin(dLo/2);
+    return 2*R*Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function gcPoints(a, b, c, d, n){
+    var t = Math.PI/180, la1 = a*t, lo1 = b*t, la2 = c*t, lo2 = d*t;
+    var dd = 2*Math.asin(Math.sqrt(Math.pow(Math.sin((la2-la1)/2),2) + Math.cos(la1)*Math.cos(la2)*Math.pow(Math.sin((lo2-lo1)/2),2)));
+    if(!dd) return [[a,b],[c,d]];
+    var out = [];
+    for(var i=0; i<=n; i++){
+      var f = i/n, A = Math.sin((1-f)*dd)/Math.sin(dd), B = Math.sin(f*dd)/Math.sin(dd);
+      var x = A*Math.cos(la1)*Math.cos(lo1) + B*Math.cos(la2)*Math.cos(lo2);
+      var y = A*Math.cos(la1)*Math.sin(lo1) + B*Math.cos(la2)*Math.sin(lo2);
+      var z = A*Math.sin(la1) + B*Math.sin(la2);
+      out.push([Math.atan2(z, Math.sqrt(x*x+y*y))/t, Math.atan2(y, x)/t]);
+    }
+    return out;
+  }
+  function hm(h){ var m = Math.max(0, Math.round(h*60)); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+
+  // Planlagt rute (stiplet lilla linje) mellom avgang og ankomst
+  function drawRoute(r){
+    var ok = r && r.origin && r.destination && r.origin.latitude!=null && r.destination.latitude!=null && showRoute;
+    var key = ok ? sel+'|'+(r.callsign_icao||'') : '';
+    if(key===routeDrawn) return;
+    routeDrawn = key; routeLayer.clearLayers();
+    if(!ok) return;
+    var o = r.origin, t = r.destination;
+    L.polyline(gcPoints(o.latitude, o.longitude, t.latitude, t.longitude, 64), {color:'#a78bfa', weight:2, opacity:.9, dashArray:'6 6', interactive:false}).addTo(routeLayer);
+    [o, t].forEach(function(x){
+      L.circleMarker([x.latitude, x.longitude], {radius:5, color:'#a78bfa', weight:2, fillColor:'#0a1017', fillOpacity:1, interactive:false})
+        .bindTooltip(esc(x.iata_code||x.icao_code||''), {permanent:true, direction:'top', className:'rt'}).addTo(routeLayer);
+    });
+  }
+
+  function emergency(sq){ return {'7700':'Nødsignal 7700', '7600':'Radiosvikt 7600', '7500':'Kapring 7500'}[sq] || ''; }
+  function cell(l, v, cls){ return '<div'+(cls?' class="'+cls+'"':'')+'><label>'+l+'</label><span>'+v+'</span></div>'; }
+
+  function renderPanel(){
+    var el = $('#panel');
+    if(!sel){ el.hidden = true; return; }
+    var p = planes.get(sel);
+    el.hidden = false;
+    var st = el.scrollTop;
+    if(!p){
+      el.innerHTML = '<div class="ph"><div><div class="call">'+esc(sel.toUpperCase())+'</div><div class="sub">Signalet er borte</div></div><button class="x" id="close" aria-label="Lukk">×</button></div>';
+      $('#close').onclick = function(){ select(null); };
+      return;
+    }
+    var d = p.d, r = d.call ? cache.route.get(d.call) : false, a = cache.ac.get(d.hex);
+    var o = (r && r.origin) || {}, t = (r && r.destination) || {};
+    drawRoute(r);
+
+    var airline = (r && r.airline && r.airline.name) || AIRLINES[airOf(d)] || (a && a.registered_owner) || '';
+    var fno = r && r.callsign_iata ? r.callsign_iata : '';
+    var tcode = (a && a.icao_type) || d.type || '';
+    var em = emergency(d.squawk);
+    var chips = (fno ? '<span class="chip">'+esc(fno)+'</span>' : '')
+      + (tcode ? '<span class="chip blue">'+esc(tcode)+'</span>' : '')
+      + (em ? '<span class="chip red">'+esc(em)+'</span>' : '');
+    var photoUrl = a && (a.url_photo_thumbnail || a.url_photo);
+    var photo = photoUrl
+      ? '<div class="pic"><img alt="" src="'+esc(photoUrl)+'"><small>Foto: '+(/plnspttrs|planespotters/.test(photoUrl) ? 'planespotters.net' : 'adsbdb.com')+'</small></div>'
+      : '';
+
+    var route = '';
+    if(r && (o.iata_code || o.icao_code || t.iata_code || t.icao_code)){
+      var prog = '';
+      if(o.latitude!=null && t.latitude!=null){
+        var flown = km(o.latitude, o.longitude, d.lat, d.lon), left = km(d.lat, d.lon, t.latitude, t.longitude);
+        var pct = Math.max(0, Math.min(100, 100*flown/Math.max(1, flown+left)));
+        var eta = '';
+        if(!d.ground && d.gs > 100){
+          var h = left/(d.gs*1.852);
+          eta = ' · ca. '+new Date(Date.now()+h*3600000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'})+' (om '+hm(h)+')';
+        }
+        prog = '<div class="prog"><i style="width:'+pct.toFixed(1)+'%"></i></div>'
+          + '<div class="bl"><span>Fløyet '+nb(flown)+' km</span><span>Igjen '+nb(left)+' km'+eta+'</span></div>';
+      }
+      route = '<div class="rt2"><div class="rp">'
+        + '<div><div class="rc">'+esc(o.iata_code||o.icao_code||'?')+'</div><small>'+esc(o.municipality||o.name||'')+'</small></div>'
+        + '<svg class="arrow" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M14 6l6 6-6 6"/></svg>'
+        + '<div><div class="rc">'+esc(t.iata_code||t.icao_code||'?')+'</div><small>'+esc(t.municipality||t.name||'')+'</small></div>'
+        + '</div>'+prog+'</div>';
+    }
+
+    var acName = a ? [a.manufacturer, a.type].filter(Boolean).join(' ') : '';
+    var vr = d.vr==null ? '–' : (d.vr>0?'+':'')+nb(d.vr);
+    var grid = '<div class="grid">'
+      + cell('Høyde', esc(fl(d)) + (d.alt!=null && !d.ground ? '<em>'+nb(d.alt*0.3048)+' m</em>' : ''))
+      + cell('Fart', (d.gs==null ? '–' : nb(d.gs)+'<em>kt · '+nb(d.gs*1.852)+' km/t</em>'))
+      + cell('Kurs', Math.round(d.trk||0)+'°')
+      + cell('Stigning', vr+'<em>ft/min</em>')
+      + cell('Fly', esc(acName || d.type || '–'), 'wide')
+      + cell('Registrering', esc((a && a.registration) || d.reg || '–'))
+      + cell('Hex', esc(d.hex.toUpperCase()))
+      + '</div>';
+
+    var extra = '';
+    if(more){
+      extra = '<div class="grid">'
+        + cell('Squawk', esc(d.squawk || '–'))
+        + cell('GPS-høyde', d.altg!=null ? nb(d.altg)+'<em>ft</em>' : '–')
+        + cell('IAS', d.ias!=null ? nb(d.ias)+'<em>kt</em>' : '–')
+        + cell('Mach', d.mach!=null ? d.mach.toFixed(2) : '–')
+        + cell('Kategori', esc(d.cat || '–'))
+        + cell('ICAO-type', esc(tcode || '–'))
+        + cell('Eier', esc((a && a.registered_owner) || '–'), 'wide')
+        + cell('Eierland', esc((a && a.registered_owner_country_name) || '–'), 'wide')
+        + '</div>'
+        + '<div class="note">Rute og flyinfo fra adsbdb.com og gjelder callsignet, ikke alltid dagens faktiske rute. Ankomsttid er estimert fra avstand og fart.</div>';
+    }
+
+    el.innerHTML =
+      '<div class="hd"><div class="hl"><div class="call">'+logoHtml(d,'big')+esc(d.call||d.hex.toUpperCase())+'</div>'
+      + (chips ? '<div class="chips">'+chips+'</div>' : '')
+      + '<div class="air">'+esc(airline || d.reg || '')+'</div></div>'+photo
+      + '<button class="x" id="close" aria-label="Lukk">×</button></div>'
+      + route + grid + extra
+      + '<div class="acts"><button id="bRoute" type="button" class="'+(showRoute?'on':'')+'">Rute</button>'
+      + '<button id="bCock" type="button">Cockpit</button>'
+      + '<button id="bMore" type="button" class="'+(more?'on':'')+'">Mer info</button>'
+      + '<button id="bFollow" type="button" class="'+(follow?'on':'')+'">Følg</button></div>';
+
+    $('#close').onclick = function(){ select(null); };
+    $('#bRoute').onclick = function(){ showRoute = !showRoute; renderPanel(); };
+    $('#bCock').onclick = openCockpit;
+    $('#bMore').onclick = function(){ more = !more; renderPanel(); };
+    $('#bFollow').onclick = function(){
+      follow = !follow;
+      if(follow && p.marker){ progPan = true; map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 8), {animate:false}); progPan = false; }
+      renderPanel();
+    };
+    el.scrollTop = st;
+  }
+
+  function lookup(d){
+    var jobs = [];
+    if(d.call && !cache.route.has(d.call)){
+      cache.route.set(d.call, null);
+      jobs.push(getJSON('https://api.adsbdb.com/v0/callsign/'+encodeURIComponent(d.call)).then(function(j){
+        cache.route.set(d.call, (j.response && j.response.flightroute) || false);
+      }).catch(function(){ cache.route.set(d.call, false); }));
+    }
+    if(!cache.ac.has(d.hex)){
+      cache.ac.set(d.hex, null);
+      jobs.push(getJSON('https://api.adsbdb.com/v0/aircraft/'+encodeURIComponent(d.hex)).then(function(j){
+        cache.ac.set(d.hex, (j.response && j.response.aircraft) || false);
+      }).catch(function(){ cache.ac.set(d.hex, false); }));
+    }
+    if(jobs.length) Promise.all(jobs).then(renderPanel);
+  }
+
+  function select(hex){
+    var old = sel; sel = hex;
+    if(old) draw(old);
+    if(hex){
+      draw(hex);
+      var p = planes.get(hex);
+      trailLine.setLatLngs(p ? p.trail : []);
+      if(p) lookup(p.d);
+    } else {
+      trailLine.setLatLngs([]);
+      follow = false; more = false; routeDrawn = ''; routeLayer.clearLayers(); closeCockpit();
+    }
+    renderPanel();
+  }
+  map.on('click', function(){ if(sel) select(null); });
+
+  /* ---------- Cockpit-visning (3D terreng sett fra flyet) ---------- */
+  var cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockHdg = 0, cockLast = 0, hudLast = 0;
+
+  function loadMapLibre(){
+    if(window.maplibregl) return Promise.resolve();
+    if(mlLoading) return mlLoading;
+    mlLoading = new Promise(function(res, rej){
+      var l = document.createElement('link'); l.rel = 'stylesheet';
+      l.href = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css'; document.head.appendChild(l);
+      var sc = document.createElement('script');
+      sc.src = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js';
+      sc.onload = res;
+      sc.onerror = function(){ mlLoading = null; rej(new Error('Kunne ikke laste 3D-biblioteket. Sjekk internett.')); };
+      document.head.appendChild(sc);
+    });
+    return mlLoading;
+  }
+
+  function planePos(p){
+    var d = p.d;
+    if(d.ground || !(d.gs>30)) return [p.lat0, p.lon0];
+    var dt = Math.min((performance.now()-p.t0)/1000, 30), m = d.gs*0.514444*dt, r = (d.trk||0)*Math.PI/180;
+    return [p.lat0 + m*Math.cos(r)/111320, p.lon0 + m*Math.sin(r)/(111320*Math.cos(p.lat0*Math.PI/180))];
+  }
+  function angDiff(a, b){ return ((b-a+540)%360)-180; }
+
+  function openCockpit(){
+    var p = planes.get(sel);
+    if(!p) return;
+    $('#cock').hidden = false; cockOn = true;
+    cockHdg = p.d.trk || 0;
+    var msg = $('#cmsg'); msg.textContent = 'Laster 3D-kart …'; msg.hidden = false;
+    $('#hCall').textContent = p.d.call || p.d.hex.toUpperCase();
+    var r = p.d.call ? cache.route.get(p.d.call) : null;
+    $('#hRoute').textContent = r && r.origin && r.destination ? (r.origin.iata_code||'')+' → '+(r.destination.iata_code||'') : '';
+    loadMapLibre().then(function(){
+      if(!cockOn) return;
+      if(!cmap){
+        cmap = new maplibregl.Map({
+          container:'cmap', interactive:false, attributionControl:false, fadeDuration:0,
+          center:[p.lon0, p.lat0], zoom:9, pitch:80, maxPitch:85,
+          style:{
+            version:8,
+            sources:{
+              sat:{type:'raster', tileSize:256, maxzoom:18, tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']},
+              dem:{type:'raster-dem', tileSize:256, maxzoom:14, encoding:'terrarium', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
+            },
+            layers:[{id:'sat', type:'raster', source:'sat'}],
+            terrain:{source:'dem', exaggeration:1}
+          }
+        });
+        try{ cmap.transform.fov = 60; }catch(e){}
+      } else { cmap.resize(); }
+      msg.hidden = true;
+      cockLoop(performance.now());
+    }).catch(function(e){ msg.textContent = e.message; });
+  }
+
+  function closeCockpit(){
+    cockOn = false;
+    cancelAnimationFrame(cockRaf);
+    var c = $('#cock'); if(c) c.hidden = true;
+  }
+
+  function cockLoop(ts){
+    if(!cockOn) return;
+    cockRaf = requestAnimationFrame(cockLoop);
+    if(ts - cockLast < 33) return;   // ca. 30 bilder i sekundet
+    cockLast = ts;
+    var p = planes.get(sel), msg = $('#cmsg');
+    if(!p){ msg.textContent = 'Signalet fra flyet er borte'; msg.hidden = false; return; }
+    msg.hidden = true;
+    var d = p.d, pos = planePos(p);
+    cockHdg = (cockHdg + angDiff(cockHdg, d.trk||0)*0.06 + 360) % 360;
+    var altM = Math.max(25, (d.ground ? 0 : (d.alt||0))*0.3048 + 4);
+    // Synsvinkel: litt nedover mot horisonten, mer ved nedstigning
+    var gamma = (d.gs>50 && d.vr!=null) ? Math.atan((d.vr*0.00508)/(d.gs*0.514444))*180/Math.PI : 0;
+    var dip = 5 + Math.max(0, -gamma)*1.5;
+    var dist = Math.min(150000, Math.max(3000, altM/Math.tan(dip*Math.PI/180)));
+    var h = cockHdg*Math.PI/180;
+    var tgt = [pos[1] + dist*Math.sin(h)/(111320*Math.cos(pos[0]*Math.PI/180)), pos[0] + dist*Math.cos(h)/111320];
+    try{
+      var cam = cmap.getFreeCameraOptions();
+      cam.position = maplibregl.MercatorCoordinate.fromLngLat([pos[1], pos[0]], altM);
+      cam.lookAtPoint(tgt);
+      cmap.setFreeCameraOptions(cam);
+    }catch(e){}
+    if(ts - hudLast > 250){
+      hudLast = ts;
+      $('#hSpd').textContent = d.gs==null ? '–' : nb(d.gs)+' kt';
+      $('#hHdg').textContent = String(Math.round(d.trk||0)).padStart(3,'0')+'°';
+      $('#hAlt').textContent = d.ground ? 'Bakke' : (d.alt==null ? '–' : nb(d.alt)+' ft');
+      $('#hVs').textContent = d.vr==null ? '–' : (d.vr>0?'+':'')+nb(d.vr);
+    }
+  }
+  $('#cclose').addEventListener('click', closeCockpit);
+
+  /* ---------- Oppdateringsløkke ---------- */
+  // Én enkelt oppdateringsløkke: hver ny runde avbryter den forrige, og gamle svar ignoreres (gen)
+  var timer = null, ctrl = null, fails = 0, gen = 0, picking = false, probeCtrls = [], diagShown = false;
+  function setStat(kind, text){
+    $('#dot').className = kind;
+    $('#stat').textContent = text;
+  }
+  function schedule(fn, ms){ clearTimeout(timer); timer = setTimeout(fn, ms); }
+  function cancelAll(){
+    gen++; clearTimeout(timer);
+    if(ctrl){ ctrl.abort(); ctrl = null; }
+    probeCtrls.forEach(function(c){ c.abort(); }); probeCtrls = [];
+    picking = false;
+  }
+
+  function tick(){
+    if(picking) return;
+    if(document.hidden){ schedule(tick, 2000); return; }
+    cancelAll();
+    var my = gen;
+    ctrl = new AbortController();
+    setStat('load', 'Henter fra '+SRC[src].label+' …');
+    SRC[src].fetch(ctrl.signal).then(function(list){
+      if(my!==gen) return;
+      apply(list); fails = 0;
+      setStat('ok', visibleCount()+' fly · '+new Date().toLocaleTimeString('nb-NO')+lastHint);
+      schedule(tick, SRC[src].every + (lastTiles>1 ? lastTiles*600 : 0));
+    }).catch(function(e){
+      if(my!==gen) return;
+      fails++;
+      var msg = e.message==='Failed to fetch' ? 'ingen kontakt (blokkert/CORS/nett)' : e.message;
+      if(fails>=2){ fails = 0; autoPick(); return; }
+      setStat('err', SRC[src].label+': '+msg);
+      schedule(tick, 2500);
+    });
+  }
+
+  // Prøver alle kilder samtidig (ett kall hver) og bruker den første som svarer
+  function autoPick(){
+    cancelAll();
+    picking = true;
+    var my = gen, left = ORDER.length, done = false;
+    setStat('load', 'Leter etter fungerende kilde …');
+    ORDER.forEach(function(k){
+      var c = new AbortController(); probeCtrls.push(c);
+      var t = setTimeout(function(){ c.abort(); }, 12000);
+      SRC[k].fetch(c.signal, true).then(function(list){
+        clearTimeout(t);
+        if(my!==gen || done) return;
+        done = true; picking = false;
+        probeCtrls.forEach(function(x){ x.abort(); }); probeCtrls = [];
+        src = k; $('#src').value = k; fails = 0;
+        $('#diagp').hidden = true;
+        apply(list);
+        setStat('ok', SRC[k].label+' · '+visibleCount()+' fly · '+new Date().toLocaleTimeString('nb-NO'));
+        schedule(tick, 300);
+      }).catch(function(){
+        clearTimeout(t);
+        if(my!==gen || done) return;
+        if(--left===0){
+          picking = false;
+          setStat('err', 'Ingen kilde svarte. Trykk Test, eller bruk flyradar_server.py. Prøver igjen om 20 s.');
+          if(!diagShown){ diagShown = true; runDiag(); }
+          schedule(autoPick, 20000);
+        }
+      });
+    });
+  }
+
+  var moveT = null;
+  map.on('moveend', function(){
+    if(progPan) return;
+    redrawAll();
+    clearTimeout(moveT);
+    moveT = setTimeout(function(){ if(!picking) tick(); }, 1000);
+  });
+  map.on('dragstart', function(){ if(follow){ follow = false; renderPanel(); } });
+  function labels(){ mapEl.classList.toggle('labels', map.getZoom()>=8); mapEl.classList.toggle('logos', map.getZoom()>=6); }
+  map.on('zoomend', labels); labels();
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden && !picking) tick(); });
+
+  /* ---------- Diagnose ---------- */
+  function withTimeout(url, opts, ms){
+    var c = new AbortController(), t = setTimeout(function(){ c.abort(); }, ms);
+    opts.signal = c.signal;
+    return fetch(url, opts).then(function(r){ clearTimeout(t); return r; }, function(e){ clearTimeout(t); throw e; });
+  }
+  function runDiag(){
+    var tests = [
+      ['adsb.lol', 'https://api.adsb.lol/v2/point/61.3/12.2/50'],
+      ['airplanes.live', 'https://api.airplanes.live/v2/point/61.3/12.2/50'],
+      ['adsb.fi', 'https://opendata.adsb.fi/api/v2/lat/61.3/lon/12.2/dist/50'],
+      ['adsb.one', 'https://api.adsb.one/v2/point/61.3/12.2/50'],
+      ['OpenSky', 'https://opensky-network.org/api/states/all?lamin=60&lomin=11&lamax=62&lomax=14'],
+      ['allorigins', 'https://api.allorigins.win/raw?url='+encodeURIComponent('https://api.adsb.lol/v2/point/61.3/12.2/50')],
+      ['codetabs', 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent('https://api.adsb.lol/v2/point/61.3/12.2/50')],
+      ['corsproxy.io', 'https://corsproxy.io/?url='+encodeURIComponent('https://api.adsb.lol/v2/point/61.3/12.2/50')],
+      ['thingproxy', 'https://thingproxy.freeboard.io/fetch/https://api.adsb.lol/v2/point/61.3/12.2/50'],
+      ['cors.lol', 'https://api.cors.lol/?url='+encodeURIComponent('https://api.adsb.lol/v2/point/61.3/12.2/50')],
+      ['adsbdb (rute)', 'https://api.adsbdb.com/v0/callsign/SAS123'],
+      ].concat(MY_PROXY ? [['Egen proxy', MY_PROXY.replace(/\/+$/,'')+'/']] : []).concat([
+      ['Kartfliser (Esri)', 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/7/36/68']
+    ]);
+    var el = $('#diagp'); el.hidden = false;
+    el.innerHTML = '<div class="ph"><div><div class="call">Test</div><div class="sub">'+esc(location.protocol+'//'+location.host)+'</div></div><button class="x" id="dclose" aria-label="Lukk">×</button></div><div id="dres"></div>'
+      + '<div class="note"><b style="color:var(--fg)">Egen proxy (anbefalt, gir stabil drift)</b><br>Lim inn adressen til din Cloudflare Worker:<br>'
+      + '<input id="px" type="url" placeholder="https://flyradar.navn.workers.dev" value="'+esc(MY_PROXY)+'" style="width:100%;margin-top:6px;box-sizing:border-box">'
+      + '<button id="pxSave" type="button" style="margin-top:6px">Lagre og bruk</button> <span id="pxMsg"></span></div>'
+      + '<div class="note">'+esc(navigator.userAgent)+'</div>';
+    $('#dclose').onclick = function(){ el.hidden = true; };
+    $('#pxSave').onclick = function(){
+      var v = $('#px').value.trim().replace(/\/+$/,'');
+      if(v && !/^https:\/\/.+/.test(v)){ $('#pxMsg').textContent = 'Adressen må starte med https://'; return; }
+      var saved = true;
+      try{ if(v) localStorage.setItem('flyradar_proxy', v); else localStorage.removeItem('flyradar_proxy'); }catch(e){ saved = false; }
+      MY_PROXY = v;
+      delete SRC.mine; ORDER = ORDER.filter(function(k){ return k!=='mine'; });
+      addMine(); src = ORDER[0]; buildSrcSelect();
+      $('#pxMsg').textContent = v ? (saved ? 'Lagret' : 'Brukes nå (nettleseren lar ikke siden huske den)') : 'Fjernet';
+      planes.forEach(function(p){ if(p.marker) p.marker.remove(); }); planes.clear();
+      fails = 0; autoPick();
+    };
+    tests.forEach(function(t){
+      var row = document.createElement('div'); row.className = 'note'; row.textContent = t[0]+': tester …';
+      $('#dres').appendChild(row);
+      withTimeout(t[1], {}, 10000).then(function(r){
+        row.textContent = t[0]+': '+(r.ok ? 'OK' : 'svarer, men feil')+' (HTTP '+r.status+')';
+        row.style.color = r.ok ? '#4fd18b' : '#ffb454';
+      }).catch(function(){
+        return withTimeout(t[1], {mode:'no-cors'}, 10000).then(function(){
+          row.textContent = t[0]+': tjenesten nås, men CORS blokkerer'; row.style.color = '#ffb454';
+        }, function(e2){
+          row.textContent = t[0]+': ingen forbindelse ('+(e2.name==='AbortError'?'tidsavbrudd':e2.message)+')'; row.style.color = '#ff6b6b';
+        });
+      });
+    });
+  }
+  $('#diag').addEventListener('click', runDiag);
+
+  /* ---------- Kontroller ---------- */
+  function redrawAll(){
+    refreshView();
+    planes.forEach(function(p,hex){ draw(hex); });
+    if($('#dot').className==='ok') setStat('ok', SRC[src].label+' · '+visibleCount()+' fly · '+new Date().toLocaleTimeString('nb-NO')+lastHint);
+  }
+  $('#air').addEventListener('change', function(e){
+    airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
+    redrawAll();
+  });
+  $('#aps').addEventListener('change', function(e){ showAps = e.target.checked; updateAirports(); });
+  $('#q').addEventListener('input', function(e){ filter = e.target.value.trim().toLowerCase(); redrawAll(); });
+  $('#src').addEventListener('change', function(e){
+    src = e.target.value;
+    planes.forEach(function(p){ if(p.marker) p.marker.remove(); });
+    planes.clear(); select(null); fails = 0; tick();
+  });
+
+  autoPick();
+})();
+</script>
+</body>
+</html>
