@@ -84,6 +84,14 @@
   #skyadj{position:absolute;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(10,16,23,.7);border:1px solid var(--line);border-radius:20px;font-size:12px;color:var(--mute)}
   #skyadj button{padding:2px 12px;min-height:30px}
   #sky .cmsg{z-index:4;top:40%}
+  #skycard{position:absolute;z-index:6;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;background:rgba(12,19,27,.93);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45}
+  #skycard .sc1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  #skycard .sc{font:700 24px/1.1 var(--cond);letter-spacing:.04em}
+  #skycard .sc img.big{width:24px;height:24px;border-radius:50%;background:#fff;vertical-align:-4px;margin-right:8px;object-fit:contain}
+  #skycard .sr{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:6px;font:12.5px var(--mono)}
+  #skycard .sr span{color:var(--mute);font-family:var(--ui)}
+  #skycard .acts2{display:flex;gap:8px;margin-top:8px}
+  #skycard .acts2 button{flex:1;padding:6px 8px;min-height:34px}
   #cmap{position:absolute;inset:0}
   #cmap canvas{outline:none}
   #cpit{position:absolute;left:0;top:0;pointer-events:none}
@@ -197,7 +205,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-01 21:45 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-01 22:00 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -240,6 +248,7 @@
   <canvas id="skyc"></canvas>
   <div id="skyinfo"></div>
   <div id="skymsg" class="cmsg" hidden></div>
+  <div id="skycard" hidden></div>
   <div id="skyadj"><button id="skyL" type="button" aria-label="Juster kompass venstre">◀</button><span>Kompass</span><button id="skyR" type="button" aria-label="Juster kompass høyre">▶</button></div>
   <button id="skyclose" type="button">Tilbake til kart</button>
 </div>
@@ -1673,6 +1682,7 @@
   };
   map.on('click', closeSheets);
   /* ---------- Himmel-kamera: hold mobilen mot himmelen og se fly ---------- */
+  var skySel = null, skyHits = [], skyHdg = 0, skyElv = 0, skyCardT = 0;
   var skyOn = false, skyStream = null, skyWatch = null, skyRaf = 0, skyObs = null, skyOri = null, skyOff = 0, skyCtx = null, skyLast = 0, skyT0 = 0, skyView = false;
   function neg(v){ return [-v[0], -v[1], -v[2]]; }
   function dot3(a, b){ return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
@@ -1722,12 +1732,14 @@
     var cv = $('#skyc'), W = window.innerWidth, H = window.innerHeight, dpr = Math.min(window.devicePixelRatio||1, 2);
     if(cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); cv.style.width = W+'px'; cv.style.height = H+'px'; skyCtx = cv.getContext('2d'); }
     var c = skyCtx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+    skyHits = [];
     var info = $('#skyinfo'), msg = $('#skymsg');
     if(!skyObs){ msg.textContent = 'Finner posisjonen din …'; msg.hidden = false; return; }
     if(!skyOri){ msg.textContent = (ts - skyT0 > 3000) ? (skyDenied ? 'Tillat bevegelse og retning (sensorer) for dette nettstedet i nettleserinnstillingene.' : 'Får ikke kompass fra telefonen. Beveg mobilen i en åtte-figur.') : 'Henter kompass …'; msg.hidden = false; return; }
     msg.hidden = true;
     var B = skyBasis(), foc = Math.max(W, H)/2/Math.tan(33*RAD);       // ca. 66° synsvinkel langs lengste side
     var hdg = (Math.atan2(B.f[0], B.f[1])/RAD + 360 + skyOff) % 360, elv = Math.asin(clampN(B.f[2], -1, 1))/RAD;
+    skyHdg = hdg; skyElv = elv;
     var list = [], seen = 0;
     planes.forEach(function(p){
       var t = skyTarget(p); if(!t || t.el < -2) return;
@@ -1745,10 +1757,12 @@
       var d = t.p.d, rt = d.call ? cache.route.get(d.call) : null;
       var l1 = (d.call || d.hex.toUpperCase()) + (rt && rt.destination ? '  → ' + (rt.destination.iata_code||'') : '');
       var l2 = (d.alt!=null ? 'FL'+String(Math.round(d.alt/100)).padStart(3,'0') : '') + ' · ' + nb(t.dist/1000) + ' km' + (d.type ? ' · ' + d.type : '');
-      c.strokeStyle = '#ffd24a'; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 14, 0, 7); c.stroke();
+      var isSel = skySel === d.hex;
+      c.strokeStyle = isSel ? '#ffffff' : '#ffd24a'; c.lineWidth = isSel ? 3.5 : 2; c.beginPath(); c.arc(px, py, isSel ? 18 : 14, 0, 7); c.stroke();
       c.fillStyle = '#ffd24a'; c.beginPath(); c.arc(px, py, 2.5, 0, 7); c.fill();
       c.font = '700 14px ui-monospace,Menlo,monospace'; var w1 = c.measureText(l1).width;
       c.font = '500 12px ui-monospace,Menlo,monospace'; var w2 = c.measureText(l2).width, bw = Math.max(w1, w2) + 14, bx = Math.min(W - bw - 4, px + 20), by = py - 22;
+      skyHits.push({x0:Math.min(px-22, bx), y0:Math.min(py-22, by), x1:Math.max(px+22, bx+bw), y1:Math.max(py+22, by+40), hex:d.hex});
       c.fillStyle = 'rgba(8,14,20,.72)'; rr(c, bx, by, bw, 40, 6); c.fill();
       c.fillStyle = '#fff'; c.font = '700 14px ui-monospace,Menlo,monospace'; c.textAlign = 'left'; c.fillText(l1, bx+7, by+12);
       c.fillStyle = '#9fd8ff'; c.font = '500 12px ui-monospace,Menlo,monospace'; c.fillText(l2, bx+7, by+29);
@@ -1758,19 +1772,59 @@
       var ang = Math.atan2(-o.y, o.x), m = 34, ex = W/2 + Math.cos(ang)*(W/2 - m), ey = H/2 + Math.sin(ang)*(H/2 - m);
       var k = Math.min((W/2 - m)/Math.max(1e-3, Math.abs(Math.cos(ang))), (H/2 - m)/Math.max(1e-3, Math.abs(Math.sin(ang))));
       ex = W/2 + Math.cos(ang)*k; ey = H/2 + Math.sin(ang)*k;
+      skyHits.push({x0:ex-36, y0:ey-36, x1:ex+36, y1:ey+36, hex:o.t.p.d.hex});
       c.save(); c.translate(ex, ey); c.rotate(ang);
-      c.fillStyle = 'rgba(255,210,74,.92)'; c.beginPath(); c.moveTo(16, 0); c.lineTo(-8, 10); c.lineTo(-8, -10); c.closePath(); c.fill(); c.restore();
+      c.fillStyle = (skySel === o.t.p.d.hex) ? '#ffffff' : 'rgba(255,210,74,.92)'; c.beginPath(); c.moveTo(16, 0); c.lineTo(-8, 10); c.lineTo(-8, -10); c.closePath(); c.fill(); c.restore();
       var d = o.t.p.d; c.font = '600 12px ui-monospace,Menlo,monospace'; c.fillStyle = '#fff'; c.textAlign = 'center';
       c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 3; var s = (d.call || d.hex.toUpperCase()) + ' ' + nb(o.t.dist/1000) + ' km';
       var tx = clampN(ex - Math.cos(ang)*40, 60, W-60), ty = clampN(ey - Math.sin(ang)*22, 14, H-14); c.strokeText(s, tx, ty); c.fillText(s, tx, ty);
     });
     var dirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
+    if(skySel && ts - skyCardT > 700){ skyCardT = ts; skyCard(); }
     info.textContent = 'Retning ' + Math.round(hdg) + '° ' + dirs[Math.round(hdg/45)%8] + ' · Høyde ' + Math.round(elv) + '° · ' + seen + ' fly i bildet' + (list.length ? ' (' + list.length + ' over horisonten)' : '');
   }
   var skyFilter = false, skyDenied = false;
 
+
+  function skyCard(){
+    var box = $('#skycard'), p = skySel && planes.get(skySel);
+    if(!p){ box.hidden = true; if(skySel){ skySel = null; } return; }
+    var d = p.d, tg = skyTarget(p), r = d.call ? cache.route.get(d.call) : null, a = cache.ac.get(d.hex);
+    if(!cache.route.has(d.call||'') || !cache.ac.has(d.hex)) lookup(d);
+    var o = (r && r.origin) || {}, ds = (r && r.destination) || {};
+    var airline = (r && r.airline && r.airline.name) || AIRLINES[airOf(d)] || (a && a.registered_owner) || '';
+    var typ = a ? [a.manufacturer, a.type].filter(Boolean).join(' ') : (d.type || '');
+    var dirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
+    var hint = '';
+    if(tg){
+      var turn = angDiff(skyHdg, tg.az), up = tg.el - skyElv;
+      hint = (Math.abs(turn) < 8 && Math.abs(up) < 8) ? 'Rett foran deg' : ('Snu ' + Math.round(Math.abs(turn)) + '° til ' + (turn > 0 ? 'høyre' : 'venstre') + (Math.abs(up) >= 5 ? ', ' + (up > 0 ? 'opp ' : 'ned ') + Math.round(Math.abs(up)) + '°' : ''));
+    }
+    var route = (o.iata_code || o.icao_code) && (ds.iata_code || ds.icao_code) ? esc((o.iata_code||o.icao_code) + ' → ' + (ds.iata_code||ds.icao_code)) + ' <span style="color:var(--mute)">' + esc((o.municipality||'') + ' → ' + (ds.municipality||'')) + '</span>' : '';
+    var eta = '';
+    if(ds.latitude!=null && d.gs>100){ var pos = planePos(p), left = km(pos[0], pos[1], ds.latitude, ds.longitude); eta = 'Landing ca. ' + new Date(Date.now() + left/(d.gs*1.852)*3600000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'}) + ' (' + nb(left) + ' km igjen)'; }
+    box.innerHTML = '<div class="sc1"><div><div class="sc">' + logoHtml(d,'big') + esc(d.call || d.hex.toUpperCase()) + '</div><div>' + esc(airline) + '</div></div><button type="button" id="scX" style="padding:2px 10px;min-height:30px" aria-label="Lukk">×</button></div>'
+      + (route ? '<div style="margin-top:4px">' + route + '</div>' : '') + (eta ? '<div style="color:var(--ok)">' + eta + '</div>' : '')
+      + '<div class="sr">'
+      + '<div><span>Fly</span> ' + esc(typ || '–') + '</div><div><span>Reg</span> ' + esc((a && a.registration) || d.reg || '–') + '</div>'
+      + '<div><span>Høyde</span> ' + esc(fl(d)) + '</div><div><span>Fart</span> ' + (d.gs==null ? '–' : nb(d.gs*1.852) + ' km/t') + '</div>'
+      + (tg ? '<div><span>Avstand</span> ' + nb(tg.dist/1000) + ' km</div><div><span>Retning</span> ' + Math.round(tg.az) + '° ' + dirs[Math.round(tg.az/45)%8] + ' · ' + Math.round(tg.el) + '° opp</div>' : '')
+      + '</div>' + (hint ? '<div style="margin-top:6px;color:var(--amber);font-weight:600">' + hint + '</div>' : '')
+      + '<div class="acts2"><button type="button" id="scMap">Vis på kart</button></div>';
+    box.hidden = false;
+    $('#scX').onclick = function(){ skySel = null; box.hidden = true; };
+    $('#scMap').onclick = function(){ var h = skySel; skyStop(); select(h); var q = planes.get(h); if(q && q.marker) map.setView(q.marker.getLatLng(), Math.max(map.getZoom(), 8), {animate:false}); };
+  }
+  $('#skyc').addEventListener('click', function(e){
+    var rc = this.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top, best = null, bd = 1e9;
+    skyHits.forEach(function(h){
+      if(x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1){ var dd = Math.hypot(x - (h.x0+h.x1)/2, y - (h.y0+h.y1)/2); if(dd < bd){ bd = dd; best = h; } }
+    });
+    if(best){ skySel = best.hex; skyCardT = 0; var p = planes.get(best.hex); if(p) lookup(p.d); skyCard(); }
+    else { skySel = null; $('#skycard').hidden = true; }
+  });
   function skyStop(){
-    skyOn = false; cancelAnimationFrame(skyRaf);
+    skyOn = false; cancelAnimationFrame(skyRaf); skySel = null; $('#skycard').hidden = true;
     window.removeEventListener('deviceorientationabsolute', skyOrient, true);
     window.removeEventListener('deviceorientation', skyOrient, true);
     if(skyWatch!=null){ try{ navigator.geolocation.clearWatch(skyWatch); }catch(e){} skyWatch = null; }
