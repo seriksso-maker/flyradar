@@ -196,7 +196,7 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Vær</h3>
-  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button></div>
+  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button></div>
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
 </div>
 
@@ -398,7 +398,8 @@
       icon:L.divIcon({className:'plane', html:'<div class="ap"><i></i><b>'+a[0]+'</b></div>', iconSize:[10,10], iconAnchor:[5,5]}),
       zIndexOffset:-1000, keyboard:false
     });
-    m.bindPopup('<b>'+esc(a[1])+'</b><br>'+a[0]);
+    m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div>', {minWidth:200});
+    m.on('popupopen', function(){ loadAirportWx(a, m); });
     apMarkers.push({m:m, major:!!a[4]});
   });
   function updateAirports(){
@@ -411,6 +412,72 @@
     mapEl.classList.toggle('aplab', z>=6);
   }
   map.on('zoomend', updateAirports); updateAirports();
+
+
+  /* ---------- Vær: METAR for flyplasser og vind/temperatur ved flyet ---------- */
+  var wxCache = {};
+  function wxGet(url, ttl){
+    var c = wxCache[url]; if(c && Date.now() - c.t < ttl) return c.p;
+    var p = fetch(url).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+    wxCache[url] = {t:Date.now(), p:p}; p.catch(function(){ delete wxCache[url]; });
+    return p;
+  }
+  var CLOUD = {FEW:'noen skyer', SCT:'spredte skyer', BKN:'oppbrutt', OVC:'overskyet', CLR:'klart', SKC:'klart', NSC:'ingen sig. skyer', CAVOK:'CAVOK'};
+  function metarHtml(m){
+    var clouds = (m.clouds||[]).map(function(c){ return (CLOUD[c.cover]||c.cover) + (c.base!=null ? ' '+nb(c.base)+' ft' : ''); }).join(', ') || (m.cover ? (CLOUD[m.cover]||m.cover) : '');
+    var vis = m.visib==null ? '' : (/\+/.test(String(m.visib)) ? '10+ km' : nb(parseFloat(m.visib)*1.609)+' km');
+    var wind = m.wdir==null && m.wspd==null ? '' : ((m.wdir==='VRB' ? 'varierende' : m.wdir+'°') + ' / ' + (m.wspd||0) + ' kt' + (m.wgst ? ' (kast '+m.wgst+')' : ''));
+    var rows = [['Vind', wind], ['Sikt', vis], ['Skyer', clouds], ['Temp', m.temp!=null ? Math.round(m.temp)+' °C' : ''], ['Duggpunkt', m.dewp!=null ? Math.round(m.dewp)+' °C' : ''], ['Trykk', m.altim!=null ? Math.round(m.altim)+' hPa' : '']]
+      .filter(function(r){ return r[1]; }).map(function(r){ return '<tr><td style="color:#7b8fa3;padding-right:10px">'+r[0]+'</td><td>'+esc(String(r[1]))+'</td></tr>'; }).join('');
+    return '<table style="font-size:13px;margin-top:6px">'+rows+'</table><div style="margin-top:6px;font:11px var(--mono);color:#9fb0c0;word-break:break-word">'+esc(m.rawOb||'')+'</div><div style="font-size:11px;color:#7b8fa3;margin-top:4px">METAR '+esc(m.icaoId||'')+(m.reportTime ? ' · '+esc(String(m.reportTime).replace('T',' ').slice(0,16))+' UTC' : '')+'</div>';
+  }
+  function loadAirportWx(a, marker){
+    function show(h){ var el = marker.getPopup() && marker.getPopup().getElement(); var box = el && el.querySelector('.wxp'); if(box) box.innerHTML = h; }
+    var la = a[2], lo = a[3], d = 0.2;
+    wxGet('https://aviationweather.gov/api/data/metar?format=json&bbox='+[la-d, lo-d*1.8, la+d, lo+d*1.8].map(function(x){ return x.toFixed(3); }).join(','), 300000).then(function(list){
+      if(!Array.isArray(list) || !list.length) throw new Error('ingen METAR');
+      list.sort(function(x, y){ return km(la, lo, x.lat, x.lon) - km(la, lo, y.lat, y.lon); });
+      show(metarHtml(list[0]));
+    }).catch(function(){
+      // Reservekilde: modellvær fra Open-Meteo for stedet
+      return wxGet('https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m,cloud_cover,pressure_msl,visibility&wind_speed_unit=kn', 600000).then(function(j){
+        var c = j.current || {};
+        show(metarHtml({wdir:Math.round(c.wind_direction_10m), wspd:Math.round(c.wind_speed_10m), wgst:c.wind_gusts_10m>c.wind_speed_10m+8 ? Math.round(c.wind_gusts_10m) : 0, visib:c.visibility!=null ? c.visibility/1609 : null, temp:c.temperature_2m, altim:c.pressure_msl, cover:c.cloud_cover>=88?'OVC':c.cloud_cover>=60?'BKN':c.cloud_cover>=25?'SCT':c.cloud_cover>=5?'FEW':'CLR', rawOb:'', icaoId:'', reportTime:''}).replace(/METAR\s*·?/, 'Modellvær (Open-Meteo)'));
+      }).catch(function(){ show('<span style="color:#ff6b6b">Fikk ikke hentet vær.</span>'); });
+    });
+  }
+
+  var PLEV = [1000,925,850,700,600,500,400,300,250,200,150,100], wxVals = {};
+  // Vind og temperatur ved flyet (modelldata fra Open-Meteo, trykknivå etter flyhøyde). null = laster, false = ikke tilgjengelig
+  function wxPlane(d){
+    if(d.lat==null) return false;
+    var la = (Math.round(d.lat*2)/2).toFixed(1), lo = (Math.round(d.lon*2)/2).toFixed(1), low = d.ground || d.alt==null || d.alt < 1500, url, lv = 0, hr = new Date().getUTCHours();
+    if(low){
+      url = 'https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=kn';
+    } else {
+      var p = 1013.25*Math.pow(1 - 6.8756e-6*d.alt, 5.2559);
+      lv = PLEV.reduce(function(b, x){ return Math.abs(x-p) < Math.abs(b-p) ? x : b; }, PLEV[0]);
+      url = 'https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo+'&hourly=temperature_'+lv+'hPa,wind_speed_'+lv+'hPa,wind_direction_'+lv+'hPa&wind_speed_unit=kn&timezone=GMT&forecast_days=1';
+    }
+    var v = wxVals[url];
+    if(v && Date.now() - v.t > 900000) v = undefined;
+    if(v === undefined){
+      wxVals[url] = {pending:true, t:Date.now()};
+      wxGet(url, 900000).then(function(j){
+        var o;
+        if(low){ var c = j.current || {}; o = {dir:c.wind_direction_10m, spd:c.wind_speed_10m, temp:c.temperature_2m}; }
+        else { var h = j.hourly || {}; o = {dir:(h['wind_direction_'+lv+'hPa']||[])[hr], spd:(h['wind_speed_'+lv+'hPa']||[])[hr], temp:(h['temperature_'+lv+'hPa']||[])[hr]}; }
+        if(o.dir==null || o.spd==null || o.temp==null) throw new Error('mangler');
+        o.t = Date.now(); wxVals[url] = o; if(sel) renderPanel();
+      }).catch(function(){ wxVals[url] = {t:Date.now(), bad:true}; if(sel) renderPanel(); });
+      return null;
+    }
+    if(v.pending) return null;
+    return v.bad ? false : v;
+  }
+
+  /* ---------- Skydekke (satellitt) fra RainViewer ---------- */
+  map.createPane('sat'); map.getPane('sat').style.zIndex = 240; map.getPane('sat').style.pointerEvents = 'none';
 
   /* ---------- Flyselskap ---------- */
   var AIRLINES = {
@@ -827,6 +894,7 @@
       + cell('Fart', (d.gs==null ? '–' : nb(d.gs)+'<em>kt · '+nb(d.gs*1.852)+' km/t</em>'))
       + cell('Kurs', Math.round(d.trk||0)+'°')
       + cell('Stigning', vr+'<em>ft/min</em>')
+      + (function(){ var w = wxPlane(d); if(w===false) return ''; return w ? cell('Vind', Math.round(w.dir)+'°<em>'+nb(w.spd)+' kt</em>') + cell('Temp. ute', Math.round(w.temp)+' °C') : cell('Vind', '…') + cell('Temp. ute', '…'); })()
       + cell('Fly', esc(acName || d.type || '–'), 'wide')
       + cell('Registrering', esc((a && a.registration) || d.reg || '–'))
       + cell('Hex', esc(d.hex.toUpperCase()))
@@ -1537,6 +1605,26 @@
   }
   $('#bRadar').onclick = function(){ radarOn = !radarOn; try{ localStorage.setItem('flyradar_radar', radarOn ? '1' : '0'); }catch(e){} radarApply(); };
   radarApply();
+  var cloudsOn = false, cloudLayer = null, cloudTimer = null;
+  try{ cloudsOn = localStorage.getItem('flyradar_clouds') === '1'; }catch(e){}
+  function cloudsLoad(){
+    if(!cloudsOn) return;
+    fetch('https://api.rainviewer.com/public/weather-maps.json').then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); }).then(function(j){
+      var fr = j.satellite && j.satellite.infrared; var f = fr && fr[fr.length-1]; if(!f) throw new Error('ingen satellittdata');
+      var layer = L.tileLayer(j.host + f.path + '/256/{z}/{x}/{y}/0/0_0.png', {pane:'sat', opacity:.6, maxNativeZoom:6, maxZoom:19, attribution:'Satellitt © RainViewer'});
+      if(cloudLayer) map.removeLayer(cloudLayer);
+      cloudLayer = layer; if(cloudsOn) layer.addTo(map);
+      radarNote('Skyer (infrarød satellitt) fra ' + new Date(f.time*1000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'}));
+    }).catch(function(e){ radarNote('Fikk ikke hentet skydekke: ' + e.message); });
+  }
+  function cloudsApply(){
+    $('#bClouds').classList.toggle('on', cloudsOn);
+    clearInterval(cloudTimer);
+    if(cloudsOn){ cloudsLoad(); cloudTimer = setInterval(cloudsLoad, 600000); }
+    else if(cloudLayer){ map.removeLayer(cloudLayer); cloudLayer = null; }
+  }
+  $('#bClouds').onclick = function(){ cloudsOn = !cloudsOn; try{ localStorage.setItem('flyradar_clouds', cloudsOn ? '1' : '0'); }catch(e){} cloudsApply(); };
+  cloudsApply();
   var meMark = null;
   $('#bLoc').onclick = function(){
     if(!navigator.geolocation){ setStat('err', 'Posisjon støttes ikke'); return; }
