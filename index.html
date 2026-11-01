@@ -84,22 +84,53 @@
   .leaflet-tooltip.rt{background:var(--panel);color:#cdbbff;border:1px solid var(--line);box-shadow:none;font:600 11px var(--mono);padding:2px 5px}
   .leaflet-tooltip-top.rt::before{border-top-color:var(--line)}
   #cock{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:2000;background:#8fb4d8;overflow:hidden;touch-action:none}
-  #sky{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:2100;background:#06101a;overflow:hidden}
+  #sky{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;z-index:2100;background:#06101a;overflow:hidden;--yl:#f6c21b}
   #skyv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   #skyc{position:absolute;left:0;top:0}
-  #skyinfo{position:absolute;left:10px;top:calc(10px + env(safe-area-inset-top));max-width:60%;font:500 12px var(--mono);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;z-index:3}
-  #skyclose{position:absolute;z-index:5;top:calc(10px + env(safe-area-inset-top));right:10px}
-  #skyadj{position:absolute;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;padding:4px 8px;background:rgba(10,16,23,.7);border:1px solid var(--line);border-radius:20px;font-size:12px;color:var(--mute)}
-  #skyadj button{padding:2px 12px;min-height:30px}
+  #skycards{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+  .skc{position:absolute;left:0;top:0;width:min(56vw,300px);pointer-events:auto;font-family:var(--ui);filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));will-change:transform}
+  .skc .bx{border-radius:10px;overflow:hidden;background:#eee;color:#222}
+  .skc .bx.sel{outline:2px solid #fff;outline-offset:-1px}
+  .skc .hd2{display:flex;align-items:stretch;background:#4a4a4a;min-height:38px}
+  .skc .hd2 .t{flex:1;min-width:0;display:flex;align-items:center;gap:5px;padding:6px 7px;overflow:hidden}
+  .skc .cs{color:var(--yl);font:700 clamp(13px,4vw,19px)/1 var(--ui);letter-spacing:0;white-space:nowrap}
+  .skc .fn{background:#6b6b6b;color:#fff;border-radius:5px;padding:2px 5px;font:600 clamp(10px,2.9vw,13px)/1.2 var(--ui);white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .skc .lgo{flex:none;width:28%;background:#fff;display:flex;align-items:center;justify-content:center;padding:3px}
+  .skc .lgo img{max-height:28px;max-width:100%;object-fit:contain}
+  .skc .lgo em{font:600 11px/1.1 var(--ui);color:#c8102e;font-style:normal;text-align:center}
+  .skc .bd{padding:8px 10px}
+  .skc .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .skc label{display:block;color:#6a6a6a;font:500 clamp(10px,2.9vw,12.5px)/1.15 var(--ui);text-transform:uppercase;letter-spacing:.03em}
+  .skc .bd b{display:block;margin-top:3px;font:500 clamp(15px,4.8vw,22px)/1.1 var(--ui);color:#1c1c1c;font-variant-numeric:tabular-nums}
+  .skc .rg{margin-top:8px;padding-top:8px;border-top:3px solid #fafafa}
+  .skc .rt{font:600 clamp(16px,5vw,22px)/1.1 var(--ui);color:#1c1c1c}
+  .skc .ty{margin-top:3px;font:500 clamp(12px,3.6vw,15px)/1.2 var(--ui);color:#555}
+  .skc .go2{border-top:3px solid #fafafa;padding:4px 10px}
+  .skc .go{display:block;width:100%;background:none;border:0;border-radius:0;padding:4px 0;min-height:30px;color:#8a5a00;font:700 14px var(--ui);text-align:left}
+  .skc .ph{position:relative;margin-top:5px;border-radius:12px;overflow:hidden;background:#222}
+  .skc .ph img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}
+  .skc .ph small{position:absolute;left:8px;bottom:6px;color:#fff;font:500 13px var(--ui);text-shadow:0 0 3px #000,0 0 3px #000}
+  #skytop{position:absolute;z-index:5;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top)) 12px 30px;display:flex;align-items:center;justify-content:center;background:linear-gradient(rgba(0,0,0,.5),transparent);pointer-events:none}
+  #skyclose{position:absolute;left:6px;top:calc(8px + env(safe-area-inset-top));width:48px;height:48px;min-height:0;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;pointer-events:auto;color:#fff;filter:drop-shadow(0 0 3px rgba(0,0,0,.7))}
+  #skytop .brand{display:flex;align-items:center;gap:8px;color:#fff;filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
+  #skytop .brand img{width:34px;height:34px}
+  #skytop .brand span{font:700 clamp(26px,8vw,38px)/1 var(--cond);letter-spacing:.01em}
+  #skytop .brand b{font:700 clamp(18px,5.4vw,26px)/1 var(--cond);color:var(--yl)}
   #sky .cmsg{z-index:4;top:40%}
-  #skycard{position:absolute;z-index:6;left:8px;right:8px;bottom:calc(58px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto;background:rgba(12,19,27,.93);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45}
-  #skycard .sc1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-  #skycard .sc{font:700 24px/1.1 var(--cond);letter-spacing:.04em}
-  #skycard .sc img.big{width:24px;height:24px;border-radius:50%;background:#fff;vertical-align:-4px;margin-right:8px;object-fit:contain}
-  #skycard .sr{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;margin-top:6px;font:12.5px var(--mono)}
-  #skycard .sr span{color:var(--mute);font-family:var(--ui)}
-  #skycard .acts2{display:flex;gap:8px;margin-top:8px}
-  #skycard .acts2 button{flex:1;padding:6px 8px;min-height:34px}
+  #skymmw{position:absolute;z-index:5;right:64px;bottom:calc(92px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+  #skylbl{color:#fff;font:700 clamp(20px,6vw,28px)/1.15 var(--ui);text-align:center;text-shadow:0 0 4px #000,0 0 8px rgba(0,0,0,.6);min-height:2.3em}
+  #skymmc{width:min(36vw,190px);aspect-ratio:1;border-radius:50%;padding:6px;background:rgba(255,255,255,.3);box-sizing:border-box;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+  #skymm{display:block;width:100%;height:100%;border-radius:50%}
+  #skyrng{position:absolute;z-index:5;right:6px;bottom:calc(100px + env(safe-area-inset-bottom));width:44px;height:min(30vh,260px);--f:1;touch-action:none;cursor:pointer}
+  #skyrng::before{content:"";position:absolute;left:9px;right:9px;top:0;bottom:0;border-radius:14px;background:rgba(255,255,255,.14)}
+  #skyrng i{position:absolute;left:9px;right:9px;bottom:0;height:calc(var(--f) * 100%);min-height:10px;border-radius:14px;background:var(--yl);box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  #skyrng u{position:absolute;left:0;right:0;bottom:calc(var(--f) * 100% + 8px);height:6px;border-radius:3px;background:var(--yl);text-decoration:none}
+  #skymode{position:absolute;z-index:5;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;padding:3px;background:rgba(120,120,125,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:999px}
+  #skymode button{border:0;background:none;color:rgba(255,255,255,.82);font:500 clamp(15px,4.6vw,20px) var(--ui);padding:10px clamp(16px,6vw,28px);min-height:0;border-radius:999px}
+  #skymode button.on{background:#d9a514;color:#fff}
+  #skypause{position:absolute;z-index:5;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));width:56px;height:56px;min-height:0;padding:0;border-radius:50%;border:3px solid #fff;background:rgba(0,0,0,.15);color:#fff;display:flex;align-items:center;justify-content:center}
+  #skyadj{position:absolute;z-index:5;left:10px;bottom:calc(82px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:2px;padding:2px 4px;background:rgba(10,16,23,.55);border-radius:18px;font-size:11px;color:#dfe8ef}
+  #skyadj button{padding:2px 8px;min-height:30px;background:none;border:0;color:#fff}
   #cmap{position:absolute;inset:0}
   #cmap canvas{outline:none}
   #cpit{position:absolute;left:0;top:0;pointer-events:none}
@@ -245,7 +276,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-01 22:00 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-01 22:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -286,11 +317,17 @@
 <div id="sky" hidden>
   <video id="skyv" autoplay playsinline muted></video>
   <canvas id="skyc"></canvas>
-  <div id="skyinfo"></div>
+  <div id="skycards"></div>
+  <div id="skytop">
+    <button id="skyclose" type="button" aria-label="Tilbake til kart"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg></button>
+    <div class="brand"><img src="icon.svg" alt=""><span>flyradar</span><b>by steinar</b></div>
+  </div>
   <div id="skymsg" class="cmsg" hidden></div>
-  <div id="skycard" hidden></div>
   <div id="skyadj"><button id="skyL" type="button" aria-label="Juster kompass venstre">◀</button><span>Kompass</span><button id="skyR" type="button" aria-label="Juster kompass høyre">▶</button></div>
-  <button id="skyclose" type="button">Tilbake til kart</button>
+  <div id="skymmw"><div id="skylbl"></div><div id="skymmc"><canvas id="skymm"></canvas></div></div>
+  <div id="skyrng" role="slider" aria-label="Rekkevidde"><i></i><u></u></div>
+  <div id="skymode"><button id="skyOv" type="button">Oversikt</button><button id="skyDt" type="button" class="on">Detaljer</button></div>
+  <button id="skypause" type="button" aria-label="Pause"></button>
 </div>
 
 <div id="cock" hidden>
@@ -1722,8 +1759,11 @@
   };
   map.on('click', closeSheets);
   /* ---------- Himmel-kamera: hold mobilen mot himmelen og se fly ---------- */
-  var skySel = null, skyHits = [], skyHdg = 0, skyElv = 0, skyCardT = 0;
-  var skyOn = false, skyStream = null, skyWatch = null, skyRaf = 0, skyObs = null, skyOri = null, skyOff = 0, skyCtx = null, skyLast = 0, skyT0 = 0, skyView = false;
+  var skySel = null, skyHits = [], skyHdg = 0, skyElv = 0;
+  var skyOn = false, skyStream = null, skyWatch = null, skyRaf = 0, skyObs = null, skyOri = null, skyOff = 0, skyCtx = null, skyLast = 0, skyT0 = 0;
+  var skyPaused = false, skyMode = 'det', skyRange = 220, skyCards = new Map(), skyLblSig = '', skyTiles = new Map(), skyMmCtx = null, skyMmS = 0, skyLastVis = null, skyRngDrag = false, PLANE_P2D = null;
+  var SKY_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><rect x="5" y="3" width="4" height="18" rx="1"/><rect x="15" y="3" width="4" height="18" rx="1"/></svg>';
+  var SKY_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M7 4l13 8-13 8z"/></svg>';
   function neg(v){ return [-v[0], -v[1], -v[2]]; }
   function dot3(a, b){ return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
 
@@ -1768,103 +1808,220 @@
   function skyLoop(ts){
     if(!skyOn) return;
     skyRaf = requestAnimationFrame(skyLoop);
+    if(skyPaused) return;
     if(ts - skyLast < 40) return; skyLast = ts;
     var cv = $('#skyc'), W = window.innerWidth, H = window.innerHeight, dpr = Math.min(window.devicePixelRatio||1, 2);
     if(cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); cv.style.width = W+'px'; cv.style.height = H+'px'; skyCtx = cv.getContext('2d'); }
     var c = skyCtx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
     skyHits = [];
-    var info = $('#skyinfo'), msg = $('#skymsg');
-    if(!skyObs){ msg.textContent = 'Finner posisjonen din …'; msg.hidden = false; return; }
+    var msg = $('#skymsg');
+    if(!skyObs){ msg.textContent = 'Finner posisjonen din …'; msg.hidden = false; skyClearCards(); return; }
     if(!skyOri){ msg.textContent = (ts - skyT0 > 3000) ? (skyDenied ? 'Tillat bevegelse og retning (sensorer) for dette nettstedet i nettleserinnstillingene.' : 'Får ikke kompass fra telefonen. Beveg mobilen i en åtte-figur.') : 'Henter kompass …'; msg.hidden = false; return; }
     msg.hidden = true;
     var B = skyBasis(), foc = Math.max(W, H)/2/Math.tan(33*RAD);       // ca. 66° synsvinkel langs lengste side
     var hdg = (Math.atan2(B.f[0], B.f[1])/RAD + 360 + skyOff) % 360, elv = Math.asin(clampN(B.f[2], -1, 1))/RAD;
     skyHdg = hdg; skyElv = elv;
-    var list = [], seen = 0;
+    var all = [], list = [], rng = skyRange*1000;
     planes.forEach(function(p){
-      var t = skyTarget(p); if(!t || t.el < -2) return;
-      list.push(t);
+      var t = skyTarget(p); if(!t || t.dist > rng) return;
+      all.push(t); if(t.el >= -2) list.push(t);
     });
     list.sort(function(a, b){ return a.dist - b.dist; });
-    var out = [];
-    c.textBaseline = 'middle';
+    var vis = [], out = [];
     list.forEach(function(t){
       var v = skyDir(t.az, t.el), zc = dot3(v, B.f), xc = dot3(v, B.r), yc = dot3(v, B.u);
       var px = W/2 + (zc > 0.05 ? xc/zc*foc : 0), py = H/2 - (zc > 0.05 ? yc/zc*foc : 0);
       var inside = zc > 0.05 && px > -20 && px < W+20 && py > -20 && py < H+20;
       if(!inside){ out.push({t:t, x:xc, y:yc}); return; }
-      seen++;
-      var d = t.p.d, rt = d.call ? cache.route.get(d.call) : null;
-      var l1 = (d.call || d.hex.toUpperCase()) + (rt && rt.destination ? '  → ' + (rt.destination.iata_code||'') : '');
-      var l2 = (d.alt!=null ? 'FL'+String(Math.round(d.alt/100)).padStart(3,'0') : '') + ' · ' + nb(t.dist/1000) + ' km' + (d.type ? ' · ' + d.type : '');
-      var isSel = skySel === d.hex;
-      c.strokeStyle = isSel ? '#ffffff' : '#ffd24a'; c.lineWidth = isSel ? 3.5 : 2; c.beginPath(); c.arc(px, py, isSel ? 18 : 14, 0, 7); c.stroke();
-      c.fillStyle = '#ffd24a'; c.beginPath(); c.arc(px, py, 2.5, 0, 7); c.fill();
-      c.font = '700 14px ui-monospace,Menlo,monospace'; var w1 = c.measureText(l1).width;
-      c.font = '500 12px ui-monospace,Menlo,monospace'; var w2 = c.measureText(l2).width, bw = Math.max(w1, w2) + 14, bx = Math.min(W - bw - 4, px + 20), by = py - 22;
-      skyHits.push({x0:Math.min(px-22, bx), y0:Math.min(py-22, by), x1:Math.max(px+22, bx+bw), y1:Math.max(py+22, by+40), hex:d.hex});
-      c.fillStyle = 'rgba(8,14,20,.72)'; rr(c, bx, by, bw, 40, 6); c.fill();
-      c.fillStyle = '#fff'; c.font = '700 14px ui-monospace,Menlo,monospace'; c.textAlign = 'left'; c.fillText(l1, bx+7, by+12);
-      c.fillStyle = '#9fd8ff'; c.font = '500 12px ui-monospace,Menlo,monospace'; c.fillText(l2, bx+7, by+29);
+      vis.push({t:t, x:px, y:py});
+    });
+    // Ring rundt hvert fly i bildet (kortet henger under)
+    vis.forEach(function(o){
+      var hx = o.t.p.d.hex, isSel = skySel === hx;
+      c.strokeStyle = isSel ? '#ffffff' : '#f6c21b'; c.lineWidth = isSel ? 3 : 2; c.beginPath(); c.arc(o.x, o.y, isSel ? 16 : 11, 0, 7); c.stroke();
+      c.fillStyle = '#f6c21b'; c.beginPath(); c.arc(o.x, o.y, 2.5, 0, 7); c.fill();
+      skyHits.push({x0:o.x-24, y0:o.y-24, x1:o.x+24, y1:o.y+24, hex:hx});
     });
     // Piler mot nærmeste fly utenfor bildet
     out.slice(0, 3).forEach(function(o){
-      var ang = Math.atan2(-o.y, o.x), m = 34, ex = W/2 + Math.cos(ang)*(W/2 - m), ey = H/2 + Math.sin(ang)*(H/2 - m);
-      var k = Math.min((W/2 - m)/Math.max(1e-3, Math.abs(Math.cos(ang))), (H/2 - m)/Math.max(1e-3, Math.abs(Math.sin(ang))));
-      ex = W/2 + Math.cos(ang)*k; ey = H/2 + Math.sin(ang)*k;
+      var ang = Math.atan2(-o.y, o.x), cx = W/2, cy = (96 + H - 150)/2, hw = W/2 - 34, hh = (H - 246)/2;
+      var k = Math.min(hw/Math.max(1e-3, Math.abs(Math.cos(ang))), hh/Math.max(1e-3, Math.abs(Math.sin(ang))));
+      var ex = cx + Math.cos(ang)*k, ey = cy + Math.sin(ang)*k;
       skyHits.push({x0:ex-36, y0:ey-36, x1:ex+36, y1:ey+36, hex:o.t.p.d.hex});
       c.save(); c.translate(ex, ey); c.rotate(ang);
-      c.fillStyle = (skySel === o.t.p.d.hex) ? '#ffffff' : 'rgba(255,210,74,.92)'; c.beginPath(); c.moveTo(16, 0); c.lineTo(-8, 10); c.lineTo(-8, -10); c.closePath(); c.fill(); c.restore();
+      c.fillStyle = (skySel === o.t.p.d.hex) ? '#ffffff' : 'rgba(246,194,27,.92)'; c.beginPath(); c.moveTo(16, 0); c.lineTo(-8, 10); c.lineTo(-8, -10); c.closePath(); c.fill(); c.restore();
       var d = o.t.p.d; c.font = '600 12px ui-monospace,Menlo,monospace'; c.fillStyle = '#fff'; c.textAlign = 'center';
-      c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 3; var s = (d.call || d.hex.toUpperCase()) + ' ' + nb(o.t.dist/1000) + ' km';
+      c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 3; var s = (d.call || d.hex.toUpperCase()) + ' ' + nb(o.t.dist/1852) + ' NM';
       var tx = clampN(ex - Math.cos(ang)*40, 60, W-60), ty = clampN(ey - Math.sin(ang)*22, 14, H-14); c.strokeText(s, tx, ty); c.fillText(s, tx, ty);
     });
-    var dirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
-    if(skySel && ts - skyCardT > 700){ skyCardT = ts; skyCard(); }
-    info.textContent = 'Retning ' + Math.round(hdg) + '° ' + dirs[Math.round(hdg/45)%8] + ' · Høyde ' + Math.round(elv) + '° · ' + seen + ' fly i bildet' + (list.length ? ' (' + list.length + ' over horisonten)' : '');
+    skyLastVis = vis.slice(0, 8);
+    skyUpdateCards(skyLastVis);
+    // Avstand og retning til valgt fly, ellers flyet nærmest midten
+    var ft = null;
+    if(skySel){ all.forEach(function(t){ if(t.p.d.hex === skySel) ft = t; }); }
+    if(!ft){ var bd = 1e9; vis.forEach(function(o){ var dd = Math.hypot(o.x - W/2, o.y - H/2); if(dd < bd){ bd = dd; ft = o.t; } }); }
+    skyLabel(ft);
+    skyDrawMini(all, hdg);
   }
   var skyFilter = false, skyDenied = false;
 
-
-  function skyCard(){
-    var box = $('#skycard'), p = skySel && planes.get(skySel);
-    if(!p){ box.hidden = true; if(skySel){ skySel = null; } return; }
-    var d = p.d, tg = skyTarget(p), r = d.call ? cache.route.get(d.call) : null, a = cache.ac.get(d.hex);
-    if(!cache.route.has(d.call||'') || !cache.ac.has(d.hex)) lookup(d);
-    var o = (r && r.origin) || {}, ds = (r && r.destination) || {};
-    var airline = (r && r.airline && r.airline.name) || AIRLINES[airOf(d)] || (a && a.registered_owner) || '';
-    var typ = a ? [a.manufacturer, a.type].filter(Boolean).join(' ') : (d.type || '');
-    var dirs = ['N','NØ','Ø','SØ','S','SV','V','NV'];
-    var hint = '';
-    if(tg){
-      var turn = angDiff(skyHdg, tg.az), up = tg.el - skyElv;
-      hint = (Math.abs(turn) < 8 && Math.abs(up) < 8) ? 'Rett foran deg' : ('Snu ' + Math.round(Math.abs(turn)) + '° til ' + (turn > 0 ? 'høyre' : 'venstre') + (Math.abs(up) >= 5 ? ', ' + (up > 0 ? 'opp ' : 'ned ') + Math.round(Math.abs(up)) + '°' : ''));
-    }
-    var route = (o.iata_code || o.icao_code) && (ds.iata_code || ds.icao_code) ? esc((o.iata_code||o.icao_code) + ' → ' + (ds.iata_code||ds.icao_code)) + ' <span style="color:var(--mute)">' + esc((o.municipality||'') + ' → ' + (ds.municipality||'')) + '</span>' : '';
-    var eta = '';
-    if(ds.latitude!=null && d.gs>100){ var pos = planePos(p), left = km(pos[0], pos[1], ds.latitude, ds.longitude); eta = 'Landing ca. ' + new Date(Date.now() + left/(d.gs*1.852)*3600000).toLocaleTimeString('nb-NO', {hour:'2-digit', minute:'2-digit'}) + ' (' + nb(left) + ' km igjen)'; }
-    box.innerHTML = '<div class="sc1"><div><div class="sc">' + logoHtml(d,'big') + esc(d.call || d.hex.toUpperCase()) + '</div><div>' + esc(airline) + '</div></div><button type="button" id="scX" style="padding:2px 10px;min-height:30px" aria-label="Lukk">×</button></div>'
-      + (route ? '<div style="margin-top:4px">' + route + '</div>' : '') + (eta ? '<div style="color:var(--ok)">' + eta + '</div>' : '')
-      + '<div class="sr">'
-      + '<div><span>Fly</span> ' + esc(typ || '–') + '</div><div><span>Reg</span> ' + esc((a && a.registration) || d.reg || '–') + '</div>'
-      + '<div><span>Høyde</span> ' + esc(fl(d)) + '</div><div><span>Fart</span> ' + (d.gs==null ? '–' : nb(d.gs*1.852) + ' km/t') + '</div>'
-      + (tg ? '<div><span>Avstand</span> ' + nb(tg.dist/1000) + ' km</div><div><span>Retning</span> ' + Math.round(tg.az) + '° ' + dirs[Math.round(tg.az/45)%8] + ' · ' + Math.round(tg.el) + '° opp</div>' : '')
-      + '</div>' + (hint ? '<div style="margin-top:6px;color:var(--amber);font-weight:600">' + hint + '</div>' : '')
-      + '<div class="acts2"><button type="button" id="scMap">Vis på kart</button></div>';
-    box.hidden = false;
-    $('#scX').onclick = function(){ skySel = null; box.hidden = true; };
-    $('#scMap').onclick = function(){ var h = skySel; skyStop(); select(h); var q = planes.get(h); if(q && q.marker) map.setView(q.marker.getLatLng(), Math.max(map.getZoom(), 8), {animate:false}); };
+  function skyLabel(t){
+    var s = t ? nb(t.dist/1852) + ' NM<br>' + Math.round(t.az) + '°' : '';
+    if(s !== skyLblSig){ skyLblSig = s; $('#skylbl').innerHTML = s; }
   }
+
+  // ----- Flykort (som i Flightradar24 AR) -----
+  function skyCardHtml(t){
+    var d = t.p.d, r = d.call ? cache.route.get(d.call) : null, a = cache.ac.get(d.hex);
+    var fn = (r && r.callsign_iata) || '';
+    var reg = (a && a.registration) || d.reg || '';
+    var photo = (a && (a.url_photo_thumbnail || a.url_photo)) || '';
+    var o = (r && r.origin) || {}, ds = (r && r.destination) || {};
+    var oc = o.iata_code || o.icao_code, dc = ds.iata_code || ds.icao_code, rt = (oc && dc) ? oc + ' → ' + dc : '';
+    var typ = a ? [a.manufacturer, a.type].filter(Boolean).join(' ') : (d.type || '');
+    var airline = (r && r.airline && r.airline.name) || AIRLINES[airOf(d)] || (a && a.registered_owner) || '';
+    var alt = d.alt==null ? '–' : Math.round(d.alt).toLocaleString('en-US') + ' ft';
+    var gs = d.gs==null ? '–' : Math.round(d.gs) + ' kts';
+    var sel = skySel === d.hex, call = d.call || d.hex.toUpperCase(), logo = logoHtml(d, 'lg');
+    var h = '<div class="bx' + (sel ? ' sel' : '') + '"><div class="hd2"><div class="t"><span class="cs">' + esc(call) + '</span>' + (fn ? '<span class="fn">' + esc(fn) + '</span>' : '') + '</div>'
+      + ((logo || airline) ? '<div class="lgo">' + (logo || '<em>' + esc(airline) + '</em>') + '</div>' : '') + '</div>';
+    if(skyMode === 'ov'){
+      h += '<div class="bd"><div class="rt">' + esc(rt || '–') + '</div><div class="ty">' + esc(typ || reg || '') + '</div></div>';
+    } else {
+      h += '<div class="bd"><div class="g2"><div><label>Barometrisk høyde</label><b>' + esc(alt) + '</b></div><div><label>Bakkefart</label><b>' + esc(gs) + '</b></div></div>'
+        + '<div class="rg"><label>Reg.</label><b>' + esc(reg || '–') + '</b></div></div>';
+    }
+    if(sel) h += '<div class="go2"><button type="button" class="go">Vis på kart ›</button></div>';
+    h += '</div>';
+    if(skyMode === 'det' && photo){
+      h += '<div class="ph"><img alt="" src="' + esc(photo) + '" onerror="this.parentNode.style.display=\'none\'"><small>© ' + (/plnspttrs|planespotters/.test(photo) ? 'planespotters.net' : 'adsbdb.com') + '</small></div>';
+    }
+    return h;
+  }
+  function skyUpdateCards(vis){
+    var box = $('#skycards'), keep = {};
+    vis.forEach(function(o, i){
+      var d = o.t.p.d, hex = d.hex; keep[hex] = 1;
+      lookup(d);
+      var html = skyCardHtml(o.t), el = skyCards.get(hex);
+      if(!el){ el = document.createElement('div'); el.className = 'skc'; el.setAttribute('data-hex', hex); box.appendChild(el); skyCards.set(hex, el); }
+      if(el._h !== html){ el._h = html; el.innerHTML = html; }
+      el.style.zIndex = skySel === hex ? 100 : 40 - i;
+      el.style.transform = 'translate3d(' + Math.round(o.x) + 'px,' + Math.round(o.y + 22) + 'px,0) translateX(-50%)';
+    });
+    skyCards.forEach(function(el, hex){ if(!keep[hex]){ el.remove(); skyCards.delete(hex); } });
+  }
+  function skyClearCards(){ skyCards.forEach(function(el){ el.remove(); }); skyCards.clear(); skyLastVis = null; }
+
+  // ----- Rund minikart med synsfelt -----
+  function skyTile(z, x, y){
+    var k = z + '/' + x + '/' + y, im = skyTiles.get(k);
+    if(!im){
+      if(skyTiles.size > 150) skyTiles.clear();
+      im = new Image(); im.src = esri('World_Topo_Map').replace('{z}', z).replace('{y}', y).replace('{x}', x);
+      skyTiles.set(k, im);
+    }
+    return (im.complete && im.naturalWidth) ? im : null;
+  }
+  function skyWorld(lat, lon, z){
+    var n = 256*Math.pow(2, z), s = Math.sin(lat*RAD);
+    return [(lon + 180)/360*n, (0.5 - Math.log((1 + s)/(1 - s))/(4*Math.PI))*n];
+  }
+  function skyDrawMini(all, hdg){
+    var cv = $('#skymm'), S = cv.clientWidth, dpr = Math.min(window.devicePixelRatio||1, 2);
+    if(!S || !skyObs) return;
+    if(skyMmS !== S){ cv.width = Math.round(S*dpr); cv.height = Math.round(S*dpr); skyMmS = S; skyMmCtx = cv.getContext('2d'); }
+    var c = skyMmCtx, R = S/2, Rm = Math.max(skyRange, 10)*1000, o = skyObs;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, S, S);
+    c.save(); c.beginPath(); c.arc(R, R, R, 0, 7); c.clip();
+    c.fillStyle = '#b9d3c2'; c.fillRect(0, 0, S, S);
+    // Kartfliser, rotert slik at retningen du ser mot peker opp
+    var mpp0 = 156543.03392*Math.cos(o.lat*RAD), z = clampN(Math.round(Math.log2(mpp0/(Rm/R))), 2, 13);
+    var s = (mpp0/Math.pow(2, z))*R/Rm, ctr = skyWorld(o.lat, o.lon, z), ext = R/s*1.45, nT = Math.pow(2, z);
+    c.save(); c.translate(R, R); c.rotate(-hdg*RAD); c.scale(s, s); c.translate(-ctr[0], -ctr[1]);
+    var x0 = Math.floor((ctr[0] - ext)/256), x1 = Math.floor((ctr[0] + ext)/256), y0 = Math.floor((ctr[1] - ext)/256), y1 = Math.floor((ctr[1] + ext)/256);
+    for(var ty = Math.max(0, y0); ty <= Math.min(nT - 1, y1); ty++){
+      for(var tx = x0; tx <= x1; tx++){
+        var im = skyTile(z, ((tx % nT) + nT) % nT, ty);
+        if(im) c.drawImage(im, tx*256 - 0.25, ty*256 - 0.25, 256.5, 256.5);
+      }
+    }
+    c.restore();
+    // Synsfelt (kameraets horisontale åpning)
+    var W = window.innerWidth, half = Math.atan((W/2)/(Math.max(W, window.innerHeight)/2/Math.tan(33*RAD)));
+    var g = c.createLinearGradient(R, R, R, 0); g.addColorStop(0, 'rgba(255,255,255,.8)'); g.addColorStop(1, 'rgba(255,255,255,.12)');
+    c.fillStyle = g; c.beginPath(); c.moveTo(R, R); c.arc(R, R, R*1.05, -Math.PI/2 - half, -Math.PI/2 + half); c.closePath(); c.fill();
+    // Fly
+    var k = R/Rm, a = -hdg*RAD, pp = PLANE_P2D || (PLANE_P2D = new Path2D(PLANE_PATH));
+    all.forEach(function(t){
+      var x = Math.sin(t.az*RAD)*t.dist*k, y = -Math.cos(t.az*RAD)*t.dist*k;
+      var px = R + x*Math.cos(a) - y*Math.sin(a), py = R + x*Math.sin(a) + y*Math.cos(a);
+      var d = t.p.d, sel = skySel === d.hex;
+      c.save(); c.translate(px, py);
+      if(sel){ c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 11, 0, 7); c.stroke(); }
+      c.rotate(((d.trk||0) - hdg)*RAD); c.scale(.7, .7); c.translate(-12, -12);
+      c.fillStyle = '#f6c21b'; c.fill(pp); c.lineWidth = 1.4; c.strokeStyle = 'rgba(50,35,0,.85)'; c.stroke(pp);
+      c.restore();
+    });
+    // Du
+    c.fillStyle = '#2a6bd6'; c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.arc(R, R, 7, 0, 7); c.fill(); c.stroke();
+    c.restore();
+    c.font = '600 9px sans-serif'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.95)'; c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 2.5;
+    c.strokeText('Esri', R, S - 7); c.fillText('Esri', R, S - 7);
+  }
+
+  // ----- Rekkevidde-slider, pause og visning -----
+  function skySetRange(f){
+    f = clampN(f, 0, 1); skyRange = 10 + f*210;
+    $('#skyrng').style.setProperty('--f', f);
+  }
+  function skyRngEvt(e){ var rc = $('#skyrng').getBoundingClientRect(); skySetRange(1 - (e.clientY - rc.top)/rc.height); }
+  (function(){
+    var rg = $('#skyrng');
+    rg.addEventListener('pointerdown', function(e){ try{ rg.setPointerCapture(e.pointerId); }catch(x){} skyRngDrag = true; skyRngEvt(e); e.preventDefault(); });
+    rg.addEventListener('pointermove', function(e){ if(skyRngDrag) skyRngEvt(e); });
+    var up = function(){ skyRngDrag = false; };
+    rg.addEventListener('pointerup', up); rg.addEventListener('pointercancel', up);
+  })();
+  function skySetPause(on){
+    skyPaused = on; var v = $('#skyv');
+    try{ if(on) v.pause(); else { var pr = v.play(); if(pr && pr.catch) pr.catch(function(){}); } }catch(e){}
+    $('#skypause').innerHTML = on ? SKY_PLAY : SKY_PAUSE;
+    $('#skypause').setAttribute('aria-label', on ? 'Fortsett' : 'Pause');
+  }
+  function skySetMode(m){
+    skyMode = m; $('#skyOv').classList.toggle('on', m === 'ov'); $('#skyDt').classList.toggle('on', m === 'det');
+    if(skyPaused && skyLastVis) skyUpdateCards(skyLastVis);
+  }
+  $('#skypause').onclick = function(){ skySetPause(!skyPaused); };
+  $('#skyOv').onclick = function(){ skySetMode('ov'); };
+  $('#skyDt').onclick = function(){ skySetMode('det'); };
+
+  function skyPick(hex){
+    skySel = (hex && skySel !== hex) ? hex : null;
+    var p = hex && planes.get(hex); if(p) lookup(p.d);
+    if(skyPaused && skyLastVis) skyUpdateCards(skyLastVis);
+  }
+  $('#skycards').addEventListener('click', function(e){
+    var cd = e.target.closest && e.target.closest('.skc'); if(!cd) return;
+    var hex = cd.getAttribute('data-hex');
+    if(e.target.closest('.go')){
+      skyStop(); select(hex); var q = planes.get(hex);
+      if(q && q.marker) map.setView(q.marker.getLatLng(), Math.max(map.getZoom(), 8), {animate:false});
+      return;
+    }
+    skyPick(hex);
+  });
   $('#skyc').addEventListener('click', function(e){
     var rc = this.getBoundingClientRect(), x = e.clientX - rc.left, y = e.clientY - rc.top, best = null, bd = 1e9;
     skyHits.forEach(function(h){
       if(x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1){ var dd = Math.hypot(x - (h.x0+h.x1)/2, y - (h.y0+h.y1)/2); if(dd < bd){ bd = dd; best = h; } }
     });
-    if(best){ skySel = best.hex; skyCardT = 0; var p = planes.get(best.hex); if(p) lookup(p.d); skyCard(); }
-    else { skySel = null; $('#skycard').hidden = true; }
+    if(best){ skySel = best.hex; var p = planes.get(best.hex); if(p) lookup(p.d); } else { skySel = null; }
+    if(skyPaused && skyLastVis) skyUpdateCards(skyLastVis);
   });
   function skyStop(){
-    skyOn = false; cancelAnimationFrame(skyRaf); skySel = null; $('#skycard').hidden = true;
+    skyOn = false; cancelAnimationFrame(skyRaf); skySel = null; skyClearCards(); skyPaused = false; skyLblSig = '';
     window.removeEventListener('deviceorientationabsolute', skyOrient, true);
     window.removeEventListener('deviceorientation', skyOrient, true);
     if(skyWatch!=null){ try{ navigator.geolocation.clearWatch(skyWatch); }catch(e){} skyWatch = null; }
@@ -1875,7 +2032,8 @@
 
   function skyStart(){
     if(skyOn) return;
-    var el = $('#sky'), msg = $('#skymsg'); el.hidden = false; skyOn = true; skyOri = null; skyT0 = performance.now(); skyLast = 0;
+    var el = $('#sky'), msg = $('#skymsg'); el.hidden = false; skyOn = true; skyOri = null; skyT0 = performance.now(); skyLast = 0; skyPaused = false; skyMmS = 0;
+    $('#skypause').innerHTML = SKY_PAUSE; skySetMode(skyMode); skySetRange((skyRange - 10)/210);
     msg.textContent = 'Starter …'; msg.hidden = false;
     var ask = (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') ? DeviceOrientationEvent.requestPermission().catch(function(){ return 'denied'; }) : Promise.resolve('granted');
     ask.then(function(st){
@@ -1892,7 +2050,7 @@
       var cam = navigator.mediaDevices && navigator.mediaDevices.getUserMedia ? navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false}) : Promise.reject(new Error('nocam'));
       return cam.then(function(s){
         if(!skyOn){ s.getTracks().forEach(function(t){ t.stop(); }); return; }
-        skyStream = s; var v = $('#skyv'); v.srcObject = s; v.play && v.play().catch(function(){});
+        skyStream = s; var v = $('#skyv'); v.style.display = ''; v.srcObject = s; v.play && v.play().catch(function(){});
       }, function(){ /* uten kamera: vis bare markørene på mørk bakgrunn */ $('#skyv').style.display = 'none'; });
     }).then(function(){ if(skyOn) skyLoop(performance.now()); });
   }
