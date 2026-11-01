@@ -195,18 +195,43 @@
   var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
   function esri(svc, nat){ return ESRI+svc+'/MapServer/tile/{z}/{y}/{x}'; }
   var AT_ESRI = 'Kart © Esri', AT_OSM = '© OpenStreetMap-bidragsytere';
+  // Kartverket har endret adresse flere ganger. Siden prøver kjente adresser etter tur og husker den som virker.
+  var KV = [
+    'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+    'https://cache.kartverket.no/topo/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+    'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/googlemaps/{z}/{y}/{x}.png',
+    'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/3857/{z}/{y}/{x}.png'
+  ];
+  function kartverketLayer(){
+    var idx = 0, loaded = 0, errs = 0;
+    try{ var sv = parseInt(localStorage.getItem('flyradar_kv'), 10); if(sv>=0 && sv<KV.length) idx = sv; }catch(e){}
+    var layer = L.tileLayer(KV[idx], {maxNativeZoom:18, maxZoom:19, attribution:'© Kartverket'});
+    layer.on('tileload', function(){
+      if(loaded++===0){ try{ localStorage.setItem('flyradar_kv', String(idx)); }catch(e){} }
+    });
+    layer.on('tileerror', function(){
+      if(loaded>0) return;
+      if(++errs < 4) return;
+      errs = 0; idx++;
+      if(idx < KV.length){ layer.setUrl(KV[idx]); return; }
+      setBase('dark');
+      setStat('err', 'Kartverket-kartet svarer ikke. Byttet til mørkt kart.');
+    });
+    return layer;
+  }
   var BASEMAPS = {
     dark:  {label:'Mørkt',     layers:[[esri('Canvas/World_Dark_Gray_Base'), 16, AT_ESRI+', HERE, Garmin, '+AT_OSM], [esri('Canvas/World_Dark_Gray_Reference'), 16, '', .9]]},
     light: {label:'Lyst',      layers:[[esri('Canvas/World_Light_Gray_Base'), 16, AT_ESRI+', HERE, Garmin, '+AT_OSM], [esri('Canvas/World_Light_Gray_Reference'), 16, '', .9]]},
     street:{label:'Gatekart',  layers:[[esri('World_Street_Map'), 19, AT_ESRI+', HERE, Garmin, '+AT_OSM]]},
     sat:   {label:'Satellitt', layers:[[esri('World_Imagery'), 18, AT_ESRI+', Maxar, Earthstar Geographics'], [esri('Reference/World_Boundaries_and_Places'), 16, '', .9]]},
     topo:  {label:'Terreng',   layers:[[esri('World_Topo_Map'), 19, AT_ESRI+', HERE, Garmin, USGS, '+AT_OSM]]},
-    no:    {label:'Norge (Kartverket)', layers:[['https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', 18, '© Kartverket']]}
+    no:    {label:'Norge (Kartverket)', layers:[], custom:kartverketLayer}
   };
   var baseGroup = L.layerGroup().addTo(map), baseKey = '';
   function setBase(k){
     if(!BASEMAPS[k]) k = 'dark';
     baseKey = k; baseGroup.clearLayers();
+    if(BASEMAPS[k].custom) baseGroup.addLayer(BASEMAPS[k].custom());
     BASEMAPS[k].layers.forEach(function(l){
       baseGroup.addLayer(L.tileLayer(l[0], {maxNativeZoom:l[1], maxZoom:19, attribution:l[2]||'', opacity:l[3]||1}));
     });
@@ -1005,7 +1030,9 @@
       ['adsbdb (rute)', 'https://api.adsbdb.com/v0/callsign/SAS123'],
       ].concat(MY_PROXY ? [['Egen proxy', MY_PROXY.replace(/\/+$/,'')+'/']] : []).concat([
       ['Kartfliser (Esri)', 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/7/36/68'],
-      ['Kartfliser (Kartverket)', 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/7/36/68.png']
+      ['Kartverket 1', 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/7/36/68.png'],
+      ['Kartverket 2', 'https://cache.kartverket.no/topo/v1/wmts/1.0.0/topo/default/webmercator/7/36/68.png'],
+      ['Kartverket 3', 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/googlemaps/7/36/68.png']
     ]);
     var el = $('#diagp'); el.hidden = false;
     el.innerHTML = '<div class="ph"><div><div class="call">Test</div><div class="sub">'+esc(location.protocol+'//'+location.host)+'</div></div><button class="x" id="dclose" aria-label="Lukk">×</button></div><div id="dres"></div>'
