@@ -130,6 +130,7 @@
   .dock button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:#e8eef3;font:500 13px var(--ui);padding:4px 8px;min-height:0;flex:1}
   .dock button.on{color:var(--amber)}
   .dock svg{display:block}
+  .fab2{bottom:calc(116px + env(safe-area-inset-bottom))!important}
   .fab{position:absolute;z-index:500;left:12px;bottom:calc(92px + env(safe-area-inset-bottom));width:48px;height:48px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(60,70,78,.88);border:0;color:#e8eef3}
   .sheet{position:absolute;z-index:550;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);max-height:50%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;box-sizing:border-box}
   .sheet[hidden]{display:none}
@@ -145,6 +146,10 @@
   .fab{width:42px;height:42px;bottom:calc(66px + env(safe-area-inset-bottom));background:rgba(60,70,78,.6)}
   .sheet{bottom:calc(64px + env(safe-area-inset-bottom))}
   .leaflet-bottom{bottom:50px}
+  #tvExit{position:absolute;z-index:600;top:calc(10px + env(safe-area-inset-top));right:10px;opacity:.55;background:rgba(10,16,23,.7)}
+  body.tv .dock, body.tv .fab, body.tv .status, body.tv .sheet, body.tv .leaflet-control-zoom, body.tv .leaflet-control-attribution{display:none!important}
+  body.tv .pl{transform:scale(1.5)} body.tv .lb{font-size:15px!important;left:34px;top:5px}
+  body.tv .ap b{font-size:13px}
   .top{flex-direction:row;background:none;border:0;border-radius:0;padding:calc(8px + env(safe-area-inset-top)) 8px 0;gap:6px;pointer-events:none;max-width:640px}
   .top>*{pointer-events:auto}
   .top .r1{flex:1.35;min-width:0}
@@ -203,6 +208,18 @@
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
 </div>
 
+<button class="fab fab2" id="bCast" type="button" aria-label="Vis på TV"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor" stroke="none"/></svg></button>
+<div class="sheet" id="shCast" hidden>
+  <h3>Vis på TV</h3>
+  <button type="button" id="bTv" style="width:100%">Start TV-modus (skjuler menyer, store fly-navn)</button>
+  <div style="margin-top:10px;font-size:13px;line-height:1.5;color:var(--mute)">
+    Send deretter skjermen til Chromecast/TV:<br>
+    <b style="color:var(--fg)">Android:</b> dra ned fra toppen og trykk <i>Smart View</i> / <i>Cast</i> / <i>Skjermdeling</i>, velg TV-en.<br>
+    <b style="color:var(--fg)">Chrome på PC:</b> ⋮-menyen → <i>Cast, lagre og del</i> → <i>Cast…</i> → velg TV-en (kilde: fane).<br>
+    <b style="color:var(--fg)">iPhone:</b> Kontrollsenter → <i>Skjermspeiling</i> (AirPlay-TV).
+  </div>
+</div>
+<button id="tvExit" type="button" hidden>Avslutt TV-modus</button>
 <button class="fab" id="bLoc" type="button" aria-label="Min posisjon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
 <nav class="dock">
   <button type="button" id="dQ"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Søk</button>
@@ -1495,7 +1512,7 @@
     moveT = setTimeout(function(){ if(!picking) tick(); }, 1000);
   });
   map.on('dragstart', function(){ if(follow){ follow = false; renderPanel(); } });
-  function labels(){ mapEl.classList.toggle('labels', map.getZoom()>=8); mapEl.classList.toggle('logos', map.getZoom()>=6); }
+  function labels(){ mapEl.classList.toggle('labels', map.getZoom()>=8 || document.body.classList.contains('tv')); mapEl.classList.toggle('logos', map.getZoom()>=6); }
   map.on('zoomend', labels); labels();
   document.addEventListener('visibilitychange', function(){ if(!document.hidden && !picking) tick(); });
 
@@ -1570,7 +1587,7 @@
     airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
     redrawAll();
   });
-  function closeSheets(){ ['#shSet','#shMap','#shQ','#shAir'].forEach(function(s){ $(s).hidden = true; }); ['#dSet','#dMap','#dQ','#dAir'].forEach(function(b){ $(b).classList.remove('on'); }); }
+  function closeSheets(){ ['#shSet','#shMap','#shQ','#shAir','#shCast'].forEach(function(s){ $(s).hidden = true; }); ['#dSet','#dMap','#dQ','#dAir'].forEach(function(b){ $(b).classList.remove('on'); }); }
   function openSheet(id, btn){ var s = $(id), was = !s.hidden; closeSheets(); if(!was){ s.hidden = false; $(btn).classList.add('on'); } }
   function buildMapChips(){
     var box = $('#mapChips'); box.innerHTML = '';
@@ -1628,6 +1645,21 @@
   }
   $('#bClouds').onclick = function(){ cloudsOn = !cloudsOn; try{ localStorage.setItem('flyradar_clouds', cloudsOn ? '1' : '0'); }catch(e){} cloudsApply(); };
   cloudsApply();
+  /* TV-modus + veiledning for Chromecast/skjermdeling */
+  var wakeLock = null;
+  function tvOn(){
+    closeSheets(); document.body.classList.add('tv'); $('#tvExit').hidden = false; mapEl.classList.add('labels');
+    try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
+    try{ navigator.wakeLock && navigator.wakeLock.request('screen').then(function(l){ wakeLock = l; }).catch(function(){}); }catch(e){}
+    setTimeout(function(){ map.invalidateSize(); }, 300);
+  }
+  function tvOff(){
+    document.body.classList.remove('tv'); $('#tvExit').hidden = true;
+    try{ if(wakeLock){ wakeLock.release(); wakeLock = null; } if(document.fullscreenElement) document.exitFullscreen(); }catch(e){}
+    labels(); setTimeout(function(){ map.invalidateSize(); }, 300);
+  }
+  $('#bCast').onclick = function(){ openSheet('#shCast', '#bCast'); };
+  $('#bTv').onclick = tvOn; $('#tvExit').onclick = tvOff;
   var meMark = null;
   $('#bLoc').onclick = function(){
     if(!navigator.geolocation){ setStat('err', 'Posisjon støttes ikke'); return; }
