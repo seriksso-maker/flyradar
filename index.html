@@ -942,7 +942,7 @@
     cv.width = Math.round(cL.W*dpr); cv.height = Math.round(cL.H*dpr);
     cv.style.width = cL.W+'px'; cv.style.height = cL.H+'px';
     cctx = cv.getContext('2d'); cctx.setTransform(dpr,0,0,dpr,0,0);
-    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(cL.vfov); }catch(e){} }
+    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(cL.vfov); cmap.triggerRepaint(); }catch(e){} }
     cs && (cs.bg = null);
   }
 
@@ -1306,7 +1306,15 @@
     drawInfo(c, L.info, d, pos);
   }
 
-  window.addEventListener('resize', function(){ if(cockOn) cResize(); });
+  var cRz = 0;
+  function cResizeSoon(){
+    if(!cockOn) return;
+    cancelAnimationFrame(cRz);
+    cRz = requestAnimationFrame(function(){ cResize(); setTimeout(function(){ if(cockOn) cResize(); }, 350); });
+  }
+  window.addEventListener('resize', cResizeSoon);
+  window.addEventListener('orientationchange', function(){ setTimeout(cResizeSoon, 200); });
+  try{ if(window.ResizeObserver) new ResizeObserver(cResizeSoon).observe($('#cock')); }catch(e){}
   $('#cclose').addEventListener('click', closeCockpit);
 
   /* ---------- Oppdateringsløkke ---------- */
