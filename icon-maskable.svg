@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16324a"/><stop offset="1" stop-color="#070d14"/></linearGradient>
+<radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffb454" stop-opacity=".35"/><stop offset="1" stop-color="#ffb454" stop-opacity="0"/></radialGradient>
+<linearGradient id="pl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe0a3"/><stop offset=".55" stop-color="#ffb454"/><stop offset="1" stop-color="#ff7a2f"/></linearGradient>
+<linearGradient id="sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#59d0ff" stop-opacity="0"/><stop offset="1" stop-color="#59d0ff" stop-opacity=".45"/></linearGradient>
+<clipPath id="c"><rect width="512" height="512" rx="0"/></clipPath>
+</defs>
+<g clip-path="url(#c)">
+<rect width="512" height="512" fill="url(#bg)"/>
+<g transform="translate(256 256) scale(0.74) translate(-256 -256)">
+<circle cx="256" cy="256" r="230" fill="url(#glow)"/>
+<g fill="none" stroke="#59d0ff" stroke-opacity=".28" stroke-width="3">
+<circle cx="256" cy="256" r="215"/><circle cx="256" cy="256" r="150"/><circle cx="256" cy="256" r="85"/>
+<path d="M256 41V471M41 256H471" stroke-opacity=".16"/>
+</g>
+<path d="M256 256 L256 41 A215 215 0 0 1 408 104 Z" fill="url(#sw)"/>
+<path d="M256 256 L256 41" stroke="#59d0ff" stroke-opacity=".8" stroke-width="3"/>
+<circle cx="120" cy="330" r="7" fill="#59d0ff"/><circle cx="388" cy="372" r="6" fill="#59d0ff" fill-opacity=".8"/><circle cx="150" cy="150" r="5" fill="#59d0ff" fill-opacity=".6"/>
+<g transform="translate(256 256) rotate(42) scale(15.5) translate(-12 -12)">
+<path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#000" fill-opacity=".35" transform="translate(.35 .5)"/>
+<path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="url(#pl)"/>
+</g>
+</g>
+</g>
+</svg>
