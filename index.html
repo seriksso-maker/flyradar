@@ -20,11 +20,6 @@
   .leaflet-control-attribution{background:rgba(10,16,23,.7)!important;color:var(--mute)!important}
   .leaflet-control-attribution a{color:var(--mute)!important}
 
-  .bar{position:absolute;z-index:500;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:none}
-  .bar>*{pointer-events:auto}
-  .brand{font:700 20px var(--cond);letter-spacing:.03em;padding:6px 12px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
-  .brand .by{font:500 14px var(--ui);letter-spacing:0;color:var(--mute);margin-left:2px}
-  .brand b{color:var(--amber);font-weight:700}
   input[type=search],select,button{font:500 14px var(--ui);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:36px;box-sizing:border-box}
   input[type=search]{width:220px;max-width:100%}
   button{cursor:pointer}
@@ -112,19 +107,35 @@
   .leaflet-container a.leaflet-popup-close-button{color:var(--mute)}
   .home{width:12px;height:12px;border-radius:50%;background:var(--amber);border:2px solid #0a1017;box-shadow:0 0 0 2px var(--amber)}
 
-  #more{display:contents}
-  #menu{display:none;padding:0 12px;font-size:18px}
+
+  /* Toppfelt, bunnmeny og ark (som i flightradar24) */
+  .top{position:absolute;z-index:500;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top)) 10px 10px;background:rgba(18,26,34,.92);border-bottom:1px solid var(--line);border-radius:0 0 14px 14px;display:flex;flex-direction:column;gap:8px;max-width:560px;box-sizing:border-box}
+  .top .r1{display:flex;gap:8px;align-items:center}
+  .badge{flex:none;width:40px;height:40px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:700 16px var(--cond);letter-spacing:.02em}
+  .badge b{color:var(--amber)}
+  .sbox{flex:1;position:relative;min-width:0}
+  .sbox svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#8a98a6;pointer-events:none}
+  .sbox input{width:100%!important;padding-left:38px;min-height:40px;background:#eef1f3;color:#22303c;border:0;border-radius:8px;font-size:15px}
+  .sbox input::placeholder{color:#7d8b97}
+  #air{width:100%;min-width:0}
+  .dock{position:absolute;z-index:500;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);display:flex;justify-content:space-around;padding:8px 6px 6px;background:rgba(18,26,34,.94);border:1px solid var(--line);border-radius:28px}
+  .dock button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:#e8eef3;font:500 13px var(--ui);padding:4px 8px;min-height:0;flex:1}
+  .dock button.on{color:var(--amber)}
+  .dock svg{display:block}
+  .fab{position:absolute;z-index:500;left:12px;bottom:calc(92px + env(safe-area-inset-bottom));width:48px;height:48px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(60,70,78,.88);border:0;color:#e8eef3}
+  .sheet{position:absolute;z-index:550;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);max-height:50%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;box-sizing:border-box}
+  .sheet[hidden]{display:none}
+  .sheet h3{margin:0 0 10px;font:600 16px var(--ui)}
+  .sheet label{display:block;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:10px 0 4px}
+  .sheet select{width:100%}
+  .chips2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .chips2 button{padding:10px 8px;text-align:center}
+  .chips2 button.on{border-color:var(--amber);color:var(--amber)}
+  .leaflet-bottom{bottom:78px}
+  .leaflet-top{top:96px}
+  .status{bottom:calc(92px + env(safe-area-inset-bottom));left:70px}
+  aside:not([hidden]) ~ .dock, aside:not([hidden]) ~ .fab, aside:not([hidden]) ~ .status{display:none}
   @media (max-width:640px){
-    .bar{top:8px;left:8px;right:8px;gap:6px;flex-wrap:nowrap;flex-direction:row;align-items:flex-start}
-    .bar{flex-wrap:wrap}
-    .brand{font-size:17px;padding:4px 9px;min-height:36px;box-sizing:border-box;display:flex;align-items:center}
-    .brand .by{display:none}
-    #air{flex:1;min-width:0;max-width:none}
-    #menu{display:block}
-    #more{display:none;width:100%;flex-wrap:wrap;gap:6px;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-sizing:border-box}
-    .bar.open #more{display:flex}
-    #more input[type=search]{width:100%}
-    #more select{flex:1;min-width:120px}
     .status{padding:5px 9px;font-size:11px}
     .status .ramp,.status .ramp-l,.status>div:nth-child(2){display:none}
     .leaflet-control-zoom{display:none}
@@ -134,8 +145,6 @@
     .rt2{padding:9px 12px}
     .rp .rc{font-size:26px}
     aside{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:46%}
-    .status{bottom:auto;top:auto;left:8px;bottom:calc(8px + 0px)}
-    aside:not([hidden]) ~ .status{display:none}
     input[type=search]{width:150px}
   }
 </style>
@@ -143,22 +152,38 @@
 <body>
 <div id="map"></div>
 
-<div class="bar">
-  <div class="brand">Fly<b>radar</b> <span class="by">by steinar</span></div>
+<div class="top">
+  <div class="r1">
+    <div class="badge">F<b>R</b></div>
+    <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly"></div>
+  </div>
   <select id="air" aria-label="Flyselskap"><option value="">Alle flyselskap</option></select>
-  <button id="menu" type="button" aria-label="Flere valg" aria-expanded="false">☰</button>
-  <div id="more">
-  <input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly">
-  <select id="mapType" aria-label="Karttype"></select>
+</div>
+
+<div class="sheet" id="shSet" hidden>
+  <h3>Innstillinger</h3>
+  <label for="src">Datakilde</label>
   <select id="src" aria-label="Datakilde">
     <option value="adsb">adsb.lol</option>
     <option value="airplanes">airplanes.live</option>
     <option value="adsbfi">adsb.fi</option>
     <option value="opensky">OpenSky</option>
   </select>
-  <button id="diag" type="button">Test</button>
-  </div>
 </div>
+<div class="sheet" id="shMap" hidden>
+  <h3>Karttype</h3>
+  <div class="chips2" id="mapChips"></div>
+  <select id="mapType" aria-label="Karttype" hidden></select>
+</div>
+
+<button class="fab" id="bLoc" type="button" aria-label="Min posisjon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
+<nav class="dock">
+  <button type="button" id="dSet"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Innstillinger</button>
+  <button type="button" id="dMap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Kart</button>
+  <button type="button" id="dAir"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>Flyselskap</button>
+  <button type="button" id="dTest"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Test</button>
+</nav>
+<button id="diag" type="button" hidden>Test</button>
 
 <aside id="panel" hidden></aside>
 <aside id="diagp" hidden style="z-index:700"></aside>
@@ -1424,8 +1449,30 @@
     airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
     redrawAll();
   });
-  $('#menu').addEventListener('click', function(){ var b = $('.bar'); b.classList.toggle('open'); this.setAttribute('aria-expanded', b.classList.contains('open')); });
-  map.on('click', function(){ $('.bar').classList.remove('open'); });
+  function closeSheets(){ $('#shSet').hidden = true; $('#shMap').hidden = true; $('#dSet').classList.remove('on'); $('#dMap').classList.remove('on'); }
+  function openSheet(id, btn){ var s = $(id), was = !s.hidden; closeSheets(); if(!was){ s.hidden = false; $(btn).classList.add('on'); } }
+  function buildMapChips(){
+    var box = $('#mapChips'); box.innerHTML = '';
+    Array.prototype.forEach.call($('#mapType').options, function(o){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = o.textContent.replace(/^Kart:\s*/, ''); b.className = o.value === $('#mapType').value ? 'on' : '';
+      b.onclick = function(){ $('#mapType').value = o.value; $('#mapType').dispatchEvent(new Event('change')); buildMapChips(); };
+      box.appendChild(b);
+    });
+  }
+  $('#dSet').onclick = function(){ openSheet('#shSet', '#dSet'); };
+  $('#dMap').onclick = function(){ buildMapChips(); openSheet('#shMap', '#dMap'); };
+  $('#dAir').onclick = function(){ closeSheets(); var s = $('#air'); s.focus(); try{ s.showPicker && s.showPicker(); }catch(e){} };
+  $('#dTest').onclick = function(){ closeSheets(); $('#diag').click(); };
+  var meMark = null;
+  $('#bLoc').onclick = function(){
+    if(!navigator.geolocation){ setStat('err', 'Posisjon støttes ikke'); return; }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var ll = [pos.coords.latitude, pos.coords.longitude];
+      if(!meMark) meMark = L.marker(ll, {icon:L.divIcon({className:'', html:'<div class="home"></div>', iconSize:[16,16], iconAnchor:[8,8]}), interactive:false}).addTo(map); else meMark.setLatLng(ll);
+      map.setView(ll, Math.max(map.getZoom(), 8));
+    }, function(){ setStat('err', 'Fikk ikke tilgang til posisjon'); }, {enableHighAccuracy:true, timeout:10000});
+  };
+  map.on('click', closeSheets);
   $('#q').addEventListener('input', function(e){ filter = e.target.value.trim().toLowerCase(); redrawAll(); });
   $('#src').addEventListener('change', function(e){
     src = e.target.value;
