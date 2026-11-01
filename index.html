@@ -142,8 +142,8 @@
   .top .r1{flex:1.35;min-width:0}
   .badge{display:none}
   .sbox input{min-height:38px;box-shadow:0 1px 6px rgba(0,0,0,.4)}
-  #air{flex:1;min-width:0;width:auto;min-height:38px;max-width:44%;background:rgba(18,26,34,.94);box-shadow:0 1px 6px rgba(0,0,0,.4)}
-  .leaflet-top{top:52px}
+  #air{flex:1;min-width:0;width:auto;min-height:38px;background:rgba(18,26,34,.94);box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .leaflet-top{top:8px}
   .status{bottom:calc(66px + env(safe-area-inset-bottom));left:60px}
   aside:not([hidden]) ~ .dock, aside:not([hidden]) ~ .fab, aside:not([hidden]) ~ .status{display:none}
   @media (max-width:640px){
@@ -163,14 +163,14 @@
 <body>
 <div id="map"></div>
 
-<div class="top">
-  <div class="r1">
-    <div class="badge">F<b>R</b></div>
-    <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly"></div>
-  </div>
+<div class="sheet" id="shQ" hidden>
+  <h3>Søk</h3>
+  <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly"></div>
+</div>
+<div class="sheet" id="shAir" hidden>
+  <h3>Flyselskap</h3>
   <select id="air" aria-label="Flyselskap"><option value="">Alle flyselskap</option></select>
 </div>
-
 <div class="sheet" id="shSet" hidden>
   <h3>Innstillinger</h3>
   <label for="src">Datakilde</label>
@@ -189,6 +189,7 @@
 
 <button class="fab" id="bLoc" type="button" aria-label="Min posisjon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg></button>
 <nav class="dock">
+  <button type="button" id="dQ"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Søk</button>
   <button type="button" id="dSet"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Innstillinger</button>
   <button type="button" id="dMap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Kart</button>
   <button type="button" id="dAir"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>Flyselskap</button>
@@ -1460,7 +1461,7 @@
     airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
     redrawAll();
   });
-  function closeSheets(){ $('#shSet').hidden = true; $('#shMap').hidden = true; $('#dSet').classList.remove('on'); $('#dMap').classList.remove('on'); }
+  function closeSheets(){ ['#shSet','#shMap','#shQ','#shAir'].forEach(function(s){ $(s).hidden = true; }); ['#dSet','#dMap','#dQ','#dAir'].forEach(function(b){ $(b).classList.remove('on'); }); }
   function openSheet(id, btn){ var s = $(id), was = !s.hidden; closeSheets(); if(!was){ s.hidden = false; $(btn).classList.add('on'); } }
   function buildMapChips(){
     var box = $('#mapChips'); box.innerHTML = '';
@@ -1472,7 +1473,8 @@
   }
   $('#dSet').onclick = function(){ openSheet('#shSet', '#dSet'); };
   $('#dMap').onclick = function(){ buildMapChips(); openSheet('#shMap', '#dMap'); };
-  $('#dAir').onclick = function(){ closeSheets(); var s = $('#air'); s.focus(); try{ s.showPicker && s.showPicker(); }catch(e){} };
+  $('#dAir').onclick = function(){ openSheet('#shAir', '#dAir'); };
+  $('#dQ').onclick = function(){ openSheet('#shQ', '#dQ'); if(!$('#shQ').hidden) setTimeout(function(){ $('#q').focus(); }, 50); };
   $('#dTest').onclick = function(){ closeSheets(); $('#diag').click(); };
   var meMark = null;
   $('#bLoc').onclick = function(){
