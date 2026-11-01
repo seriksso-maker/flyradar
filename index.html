@@ -132,7 +132,13 @@
   .chips2 button{padding:10px 8px;text-align:center}
   .chips2 button.on{border-color:var(--amber);color:var(--amber)}
   .leaflet-bottom{bottom:78px}
-  .leaflet-top{top:96px}
+  .top{flex-direction:row;background:none;border:0;border-radius:0;padding:calc(8px + env(safe-area-inset-top)) 8px 0;gap:6px;pointer-events:none;max-width:640px}
+  .top>*{pointer-events:auto}
+  .top .r1{flex:1.35;min-width:0}
+  .badge{display:none}
+  .sbox input{min-height:38px;box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  #air{flex:1;min-width:0;width:auto;min-height:38px;max-width:44%;background:rgba(18,26,34,.94);box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .leaflet-top{top:52px}
   .status{bottom:calc(92px + env(safe-area-inset-bottom));left:70px}
   aside:not([hidden]) ~ .dock, aside:not([hidden]) ~ .fab, aside:not([hidden]) ~ .status{display:none}
   @media (max-width:640px){
