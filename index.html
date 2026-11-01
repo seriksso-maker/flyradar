@@ -568,7 +568,13 @@
     return function(signal, probe){
       var t = tilesFor(probe ? 1 : 12), tiles = probe ? [t.tiles[0]] : t.tiles;
       var p = tiles.map(function(x){ return x[0].toFixed(3)+','+x[1].toFixed(3)+','+x[2]; }).join('|');
-      return getJSON(base+'/multi?p='+encodeURIComponent(p), signal).then(function(j){
+      return fetch(base+'/multi?p='+encodeURIComponent(p), {signal:signal}).then(function(r){
+        if(r.ok) return r.json();
+        return r.text().then(function(b){
+          var why = /1015|rate limit/i.test(b) ? 'Cloudflare begrenser (for mange kall)' : /1027|exceeded|limit/i.test(b) ? 'Cloudflare dagsgrense nådd' : /alle kilder/.test(b) ? 'alle flydata-kildene avviste proxyen' : (b||'').replace(/<[^>]*>/g,' ').trim().slice(0,60);
+          throw new Error('proxy svarte HTTP '+r.status+(why?' – '+why:''));
+        });
+      }, function(e){ if(e && e.name==='AbortError') throw e; throw new Error('når ikke egen proxy (sjekk at workeren finnes og kjører)'); }).then(function(j){
         if(!probe){ lastTiles = tiles.length; lastHint = t.cut ? ' · zoom inn for flere fly' : ''; }
         return normAdsb(j);
       });
