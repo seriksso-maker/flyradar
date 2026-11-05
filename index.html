@@ -289,6 +289,8 @@
   <h3>Karttype</h3>
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
+  <h3 style="margin-top:14px">Hopp til område</h3>
+  <div class="chips2" id="regChips"><button type="button" data-r="54,12,5">Europa</button><button type="button" data-r="39,-98,4">Nord-Amerika</button><button type="button" data-r="40.7,-74,7">New York</button><button type="button" data-r="34,-118.2,7">Los Angeles</button><button type="button" data-r="41.9,-87.9,7">Chicago</button><button type="button" data-r="25.8,-80.3,7">Miami</button></div>
   <h3 style="margin-top:14px">Vær</h3>
   <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button></div>
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
@@ -2247,6 +2249,12 @@
   cloudsApply();
   /* TV-modus + veiledning for Chromecast/skjermdeling */
   var wakeLock = null;
+  $('#regChips').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    var a = b.dataset.r.split(',').map(Number);
+    if(sel){ try{ select(null); }catch(_){} }
+    map.setView([a[0], a[1]], a[2], {animate:false}); closeSheets();
+  });
   function tvOn(){
     closeSheets(); document.body.classList.add('tv'); $('#tvExit').hidden = false; mapEl.classList.add('labels');
     try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
