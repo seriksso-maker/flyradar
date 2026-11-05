@@ -1,7 +1,7 @@
 {
- "name": "Flyradar by steinar",
- "short_name": "Flyradar",
- "description": "Flyradar by steinar \u2013 fly i luften over Europa",
+ "name": "FLYBLIKK",
+ "short_name": "Flyblikk",
+ "description": "Flytrafikk i sanntid",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

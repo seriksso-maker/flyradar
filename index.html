@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Flyradar by steinar</title>
+<title>FLYBLIKK – Flytrafikk i sanntid</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2">
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#0a1017">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Flyradar">
+<meta name="apple-mobile-web-app-title" content="Flyblikk">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -115,7 +115,8 @@
   #skytop .brand{display:flex;align-items:center;gap:8px;color:#fff;filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
   #skytop .brand img{width:34px;height:34px}
   #skytop .brand span{font:700 clamp(26px,8vw,38px)/1 var(--cond);letter-spacing:.01em}
-  #skytop .brand b{font:700 clamp(18px,5.4vw,26px)/1 var(--cond);color:var(--yl)}
+  #skytop .brand .bt{display:flex;flex-direction:column;gap:3px}
+  #skytop .brand b{font:600 clamp(11px,3.4vw,15px)/1 var(--cond);letter-spacing:.06em;color:var(--yl)}
   #sky .cmsg{z-index:4;top:40%}
   #skymmw{position:absolute;z-index:5;right:64px;bottom:calc(92px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
   #skylbl{color:#fff;font:700 clamp(20px,6vw,28px)/1.15 var(--ui);text-align:center;text-shadow:0 0 4px #000,0 0 8px rgba(0,0,0,.6);min-height:2.3em}
@@ -244,7 +245,7 @@
   @keyframes spSweep{to{transform:rotate(360deg)}}
   #splash .lg{position:relative;width:min(34vw,150px);height:min(34vw,150px);margin-top:-8vh;filter:drop-shadow(0 8px 28px rgba(255,180,84,.45));animation:spIn 1s cubic-bezier(.2,.9,.3,1.2) both}
   @keyframes spIn{from{transform:translateY(40px) scale(.6) rotate(-14deg);opacity:0}to{transform:none;opacity:1}}
-  #splash .t1{margin-top:22px;font:600 clamp(16px,5vw,24px) var(--cond);letter-spacing:.55em;padding-left:.55em;color:#59d0ff;text-transform:uppercase;animation:spUp .8s .35s both}
+  #splash .t1{margin-top:12px;font:600 clamp(16px,5vw,24px) var(--cond);letter-spacing:.2em;padding-left:.2em;color:#59d0ff;animation:spUp .8s .35s both}
   #splash .t2{font:700 clamp(54px,18vw,104px)/1 var(--cond);letter-spacing:.04em;background:linear-gradient(180deg,#ffe3ac 0%,#ffb454 52%,#ff7a2f 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 4px 18px rgba(255,150,60,.35));animation:spUp .9s .5s both}
   #splash .ln{margin-top:18px;width:min(46vw,220px);height:3px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden;animation:spUp .8s .7s both}
   #splash .ln b{display:block;height:100%;width:40%;border-radius:2px;background:linear-gradient(90deg,transparent,#ffb454,transparent);animation:spLoad 1.3s ease-in-out infinite}
@@ -253,7 +254,7 @@
 </style>
 </head>
 <body>
-<div id="splash"><div class="rg"><div class="sw"></div><i></i><i></i><i></i></div><img class="lg" src="icon.svg" alt=""><div class="t1">Fly med</div><div class="t2">Steinar</div><div class="ln"><b></b></div></div>
+<div id="splash"><div class="rg"><div class="sw"></div><i></i><i></i><i></i></div><img class="lg" src="icon.svg" alt=""><div class="t2">FLYBLIKK</div><div class="t1">Flytrafikk i sanntid</div><div class="ln"><b></b></div></div>
 <script>
 /* Oppstartsbilde: vises minst 2,2 s, fjernes når første data er inne (maks 5 s) */
 (function(){
@@ -332,7 +333,7 @@
   <div id="skycards"></div>
   <div id="skytop">
     <button id="skyclose" type="button" aria-label="Tilbake til kart"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l16 16M20 4L4 20"/></svg></button>
-    <div class="brand"><img src="icon.svg" alt=""><span>flyradar</span><b>by steinar</b></div>
+    <div class="brand"><img src="icon.svg" alt=""><div class="bt"><span>FLYBLIKK</span><b>Flytrafikk i sanntid</b></div></div>
   </div>
   <div id="skymsg" class="cmsg" hidden></div>
   <div id="skyadj"><button id="skyL" type="button" aria-label="Juster kompass venstre">◀</button><span>Kompass</span><button id="skyR" type="button" aria-label="Juster kompass høyre">▶</button></div>
