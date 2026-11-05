@@ -908,6 +908,10 @@
       var m = d.gs*0.514444*dt, r = (d.trk||0)*Math.PI/180;
       p.marker.setLatLng([p.lat0 + m*Math.cos(r)/111320, p.lon0 + m*Math.sin(r)/(111320*Math.cos(p.lat0*Math.PI/180))]);
     });
+    if(sel){
+      var sp = planes.get(sel);
+      if(sp && sp.marker && sp.marker._map){ var ll = sp.marker.getLatLng(); trailLine.setLatLngs(sp.trail.concat([[ll.lat, ll.lng]])); }
+    }
     if(follow && sel){
       var fp = planes.get(sel);
       if(fp && fp.marker){ progPan = true; map.panTo(fp.marker.getLatLng(), {animate:false}); progPan = false; }
