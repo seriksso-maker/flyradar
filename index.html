@@ -332,7 +332,7 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
-  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bHeli" style="grid-column:1/3">Helikoptre på kartet</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
   <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
@@ -414,6 +414,10 @@
   });
   var HOME = [61.07820, 11.97509]; // Grøtbekklia, Trysil (standard)
   try{ var hs = JSON.parse(localStorage.getItem('flyblikk_home')||'null'); if(hs && isFinite(hs[0]) && isFinite(hs[1])) HOME = hs; }catch(e){}
+  var HELI_TYPES = /^(H60|S61|S92|S76|S70|EC20|EC25|EC30|EC35|EC45|EC55|EC75|A109|A119|A139|A169|A189|AS32|AS35|AS50|AS55|AS65|B06|B407|B412|B429|B505|R22|R44|R66|H135|H145|H160|H175|NH90|MI8|MI17|KA32|CH47|UH1|AW09|EN28|BK17|MD52|MD60|MD90|LYNX|PUMA|NH10|SK61|SK76|SK92|GAZL|HUEY|HUCO|HUR|TIGR|APCH)$/;
+  function isHeli(d){ return !!d && (d.cat==='A7' || HELI_TYPES.test((d.type||'').toUpperCase())); }
+  var showHeli = true; try{ showHeli = localStorage.getItem('flyblikk_heli') !== '0'; }catch(e){}
+  var HELI_SVG = '<g fill="currentColor" stroke="#000" stroke-width=".6" stroke-linejoin="round"><rect x="11.1" y="12" width="1.8" height="9.5" rx=".6"/><path d="M9.6 20.2h4.8v1.6H9.6z"/><ellipse cx="12" cy="10" rx="3.3" ry="4.4"/></g><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"><path d="M3 4.5l18 11M21 4.5L3 15.5"/></g><circle cx="12" cy="10" r="1.3" fill="#0a1017"/>';
   var PLANE_PATH = 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
 
   var map = L.map('map', {zoomControl:false, minZoom:3}).setView([54, 12], 5);
@@ -937,6 +941,7 @@
 
   function matches(d){
     if(d.ground && !showGround && d.hex!==sel) return false;
+    if(!showHeli && isHeli(d) && d.hex!==sel) return false;
     if(airSel && d.hex!==sel && airOf(d)!==airSel) return false;
     if(!filter) return true;
     return (d.call+' '+d.reg+' '+d.type+' '+d.hex).toLowerCase().indexOf(filter)!==-1;
@@ -955,7 +960,7 @@
   }
   function iconFor(d, selected, z){
     var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+(emgOf(d)?' emg':'')+(holdOf(d.hex)?' hld':'')+(rescueOf(d)?' rsc':'')+'" style="color:'+altColor(d)+'">'
-      + '<svg viewBox="0 0 24 24" style="transform:rotate('+Math.round(d.trk||0)+'deg)" fill="currentColor"><path d="'+PLANE_PATH+'"/></svg>'
+      + '<svg viewBox="0 0 24 24" style="transform:rotate('+Math.round(d.trk||0)+'deg)" fill="currentColor">'+(isHeli(d) ? HELI_SVG : '<path d="'+PLANE_PATH+'"/>')+'</svg>'
       + (rescueOf(d) ? '<i class="rcx">✚</i>' : '')
       + (z>=6 ? logoHtml(d,'lg') : '')
       + (z>=8 ? '<span class="lb">'+esc(d.call||d.hex)+'</span>' : '')
@@ -2754,6 +2759,13 @@
     clearInterval(atcTimer);
     if(atcOn){ atcDraw(); atcTimer = setInterval(atcDraw, 1000); }
   }
+  function heliApply(){
+    $('#bHeli').classList.toggle('on', showHeli);
+    try{ localStorage.setItem('flyblikk_heli', showHeli ? '1' : '0'); }catch(e){}
+    planes.forEach(function(p){ if(p.d){ p.ikey = null; draw(p.d.hex); } });
+  }
+  $('#bHeli').onclick = function(){ showHeli = !showHeli; heliApply(); };
+  heliApply();
   $('#bRsc').onclick = function(){ rscOn = !rscOn; rscApply(); };
   rscApply();
   $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
