@@ -517,8 +517,9 @@
       icon:L.divIcon({className:'plane', html:'<div class="ap"><i></i><b>'+a[0]+'</b></div>', iconSize:[10,10], iconAnchor:[5,5]}),
       zIndexOffset:-1000, keyboard:false
     });
-    m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div>', {minWidth:200});
-    m.on('popupopen', function(){ loadAirportWx(a, m); });
+    m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div><div class="apt" style="margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px"></div>', {minWidth:230});
+    m.on('popupopen', function(){ loadAirportWx(a, m); aptLive(a, m, true); });
+    m.on('popupclose', function(){ aptLive(a, m, false); });
     apMarkers.push({m:m, major:!!a[4]});
   });
   function updateAirports(){
@@ -549,6 +550,51 @@
     var rows = [['Vind', wind], ['Sikt', vis], ['Skyer', clouds], ['Temp', m.temp!=null ? Math.round(m.temp)+' °C' : ''], ['Duggpunkt', m.dewp!=null ? Math.round(m.dewp)+' °C' : ''], ['Trykk', m.altim!=null ? Math.round(m.altim)+' hPa' : '']]
       .filter(function(r){ return r[1]; }).map(function(r){ return '<tr><td style="color:#7b8fa3;padding-right:10px">'+r[0]+'</td><td>'+esc(String(r[1]))+'</td></tr>'; }).join('');
     return '<table style="font-size:13px;margin-top:6px">'+rows+'</table><div style="margin-top:6px;font:11px var(--mono);color:#9fb0c0;word-break:break-word">'+esc(m.rawOb||'')+'</div><div style="font-size:11px;color:#7b8fa3;margin-top:4px">METAR '+esc(m.icaoId||'')+(m.reportTime ? ' · '+esc(String(m.reportTime).replace('T',' ').slice(0,16))+' UTC' : '')+'</div>';
+  }
+  // Live trafikk rundt flyplassen, regnet ut fra flyene som er på kartet akkurat nå
+  var aptTimer = 0;
+  function aptHtml(a){
+    var gnd = [], arr = [], dep = [];
+    planes.forEach(function(p){
+      var d = p.d; if(!d || d.lat==null) return;
+      var dist = km(a[2], a[3], d.lat, d.lon);
+      if(d.ground){ if(dist < 4) gnd.push([d, dist]); return; }
+      if(dist > 45 || d.alt==null || d.alt > 9000) return;
+      var diff = Math.abs(((bearing(d.lat, d.lon, a[2], a[3]) - (d.trk||0)) + 540) % 360 - 180);
+      var rec = [d, dist];
+      if(d.vr!=null && d.vr > 400 && dist < 25) dep.push(rec);
+      else if(diff < 70) arr.push(rec);
+      else if(dist < 25 && (d.vr==null || d.vr >= -300)) dep.push(rec);
+    });
+    function row(r){
+      var d = r[0];
+      return '<div class="aprow" data-hex="'+esc(d.hex)+'" style="display:flex;gap:8px;padding:3px 0;cursor:pointer;font-size:13px"><b style="min-width:70px;color:#ffb454">'+esc(d.call||d.hex)+'</b><span style="color:#9fb0c0">'+esc(d.type||'')+'</span><span style="margin-left:auto;font:12px var(--mono)">'+(d.alt!=null ? nb(Math.round(d.alt/100)*100)+' ft' : '')+' · '+Math.round(r[1])+' km</span></div>';
+    }
+    function sec(t, list, n){
+      list.sort(function(x, y){ return x[1]-y[1]; });
+      return '<div style="margin-top:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7b8fa3">'+t+' ('+list.length+')</div>' + (list.length ? list.slice(0, n).map(row).join('') : '<div style="font-size:12px;color:#5f7284">Ingen akkurat nå</div>');
+    }
+    return '<div style="font-weight:600">Live trafikk <span style="font-weight:400;color:#7b8fa3;font-size:12px">· oppdateres hvert 2. sekund</span></div>'
+      + sec('Ankommende', arr, 6) + sec('Avgående', dep, 6)
+      + '<div style="margin-top:6px;font-size:12px;color:#9fb0c0">På bakken: '+gnd.length+(gnd.length ? ' · '+gnd.slice(0,4).map(function(r){ return esc(r[0].call||r[0].hex); }).join(', ')+(gnd.length>4?' …':'') : '')+'</div>'
+      + '<div style="margin-top:4px;font-size:11px;color:#5f7284">Beregnet fra flyene som vises på kartet (innen 45 km, under 9 000 ft).</div>';
+  }
+  function aptLive(a, marker, on){
+    clearInterval(aptTimer);
+    if(!on) return;
+    function upd(){
+      var el = marker.getPopup() && marker.getPopup().getElement(), box = el && el.querySelector('.apt');
+      if(box) box.innerHTML = aptHtml(a);
+    }
+    upd(); aptTimer = setInterval(upd, 2000);
+    var el = marker.getPopup().getElement();
+    if(el && !el._aptBound){
+      el._aptBound = true;
+      el.addEventListener('click', function(e){
+        var r = e.target.closest && e.target.closest('.aprow'); if(!r) return;
+        var hex = r.dataset.hex; marker.closePopup(); select(hex);
+      });
+    }
   }
   function loadAirportWx(a, marker){
     function show(h){ var el = marker.getPopup() && marker.getPopup().getElement(); var box = el && el.querySelector('.wxp'); if(box) box.innerHTML = h; }
