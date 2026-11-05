@@ -372,7 +372,7 @@
   var map = L.map('map', {zoomControl:false, minZoom:3}).setView([54, 12], 5);
   L.control.zoom({position:'bottomright'}).addTo(map);
   L.marker(HOME, {icon:L.divIcon({className:'plane', html:'<div class="home"></div>', iconSize:[12,12], iconAnchor:[6,6]}), interactive:false, keyboard:false}).addTo(map);
-  var trailLine = L.polyline([], {color:'#ffb454', weight:2, opacity:.85}).addTo(map);
+  var trailLine = L.polyline([], {color:'#ff2d2d', weight:3, opacity:.95}).addTo(map);
 
   var $ = function(s){ return document.querySelector(s); };
 
