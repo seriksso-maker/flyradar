@@ -182,6 +182,17 @@
   body.atc #rscBox{top:148px}
   .pl.rsc svg{filter:drop-shadow(0 0 6px #ff3b30) drop-shadow(0 0 2px #fff) !important}
   .pl .rcx{position:absolute;left:-9px;top:-9px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:50%;background:#e5322a;color:#fff;font:700 10px var(--ui);font-style:normal;border:1px solid #fff;z-index:2}
+  #lrBox{position:fixed;left:10px;bottom:84px;z-index:7500;width:min(94vw,370px);max-height:46vh;overflow:auto;display:none;background:rgba(10,16,23,.96);border:1px solid #59d0ff;border-radius:14px;color:var(--fg);font:13px var(--ui);box-shadow:0 8px 30px rgba(0,0,0,.55)}
+  #lrBox .lrh{display:flex;align-items:baseline;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(10,16,23,.98)}
+  #lrBox .lrh b{color:#59d0ff;font-size:14px} #lrBox .lrh span{color:var(--mute);font-size:12px;flex:1}
+  #lrBox .lrh button{border:0;background:transparent;color:var(--mute);font-size:20px;line-height:1;padding:0 4px}
+  #lrBox .lrrow{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer}
+  #lrBox .lrrow.on{background:rgba(89,208,255,.12)}
+  #lrBox .lrrow>div{display:flex;gap:8px;align-items:baseline}
+  #lrBox .lrrow b{color:#ffb454;min-width:72px} #lrBox .lrrow em{margin-left:auto;font-style:normal;font:600 12px var(--mono);color:#e6eef5}
+  #lrBox .lrrow .s{justify-content:space-between;font-size:12px;color:#9fb0c0}
+  #lrBox .lrb{width:calc(100% - 24px);margin:8px 12px}
+  #lrBox .lrn,#lrBox .lrl{padding:8px 12px;color:var(--mute);font-size:12px}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -320,7 +331,7 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
-  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
   <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
@@ -637,6 +648,7 @@
     return '<div style="font-weight:600">Live trafikk <span style="font-weight:400;color:#7b8fa3;font-size:12px">· oppdateres hvert 2. sekund</span></div>'
       + sec('Ankommende', arr, 6) + sec('Avgående', dep, 6)
       + '<div style="margin-top:6px;font-size:12px;color:#9fb0c0">På bakken: '+gnd.length+(gnd.length ? ' · '+gnd.slice(0,4).map(function(r){ return esc(r[0].call||r[0].hex); }).join(', ')+(gnd.length>4?' …':'') : '')+'</div>'
+      + '<button type="button" class="aplr" style="width:100%;margin-top:8px">Åpne landingsradar for '+esc(a[0])+'</button>'
       + '<div style="margin-top:4px;font-size:11px;color:#5f7284">Beregnet fra flyene som vises på kartet (innen 45 km, under 9 000 ft).</div>';
   }
   function aptLive(a, marker, on){
@@ -651,6 +663,7 @@
     if(el && !el._aptBound){
       el._aptBound = true;
       el.addEventListener('click', function(e){
+        if(e.target.closest && e.target.closest('.aplr')){ marker.closePopup(); lrOpen(a); return; }
         var r = e.target.closest && e.target.closest('.aprow'); if(!r) return;
         var hex = r.dataset.hex; marker.closePopup(); select(hex);
       });
@@ -1080,6 +1093,72 @@
     });
   }
 
+  /* Landingsradar: følger fly på innflyging til en flyplass */
+  var lrApt = null, lrTimer = 0, lrBox = null, lrLanded = [], lrApp = {};
+  function lrOpen(a){
+    if(!a){
+      var c = map.getCenter(), bd = 1e9; AIRPORTS.forEach(function(x){ var d = km(c.lat, c.lng, x[2], x[3]); if(d < bd){ bd = d; a = x; } });
+      if(!a || bd > 300){ radarNote('Ingen flyplass i nærheten av kartutsnittet'); return; }
+    }
+    lrApt = a; lrLanded = []; lrApp = {};
+    if(!lrBox){
+      lrBox = document.createElement('div'); lrBox.id = 'lrBox';
+      lrBox.addEventListener('click', function(e){
+        if(e.target.closest('[data-x]')){ lrClose(); return; }
+        if(e.target.closest('[data-next]')){ var f = lrList().arr[0]; if(f) lrPick(f[0].hex); return; }
+        var r = e.target.closest('[data-hex]'); if(r) lrPick(r.dataset.hex);
+      });
+      document.body.appendChild(lrBox);
+    }
+    lrBox.style.display = 'block'; closeSheets();
+    map.setView([a[2], a[3]], Math.max(map.getZoom(), 9), {animate:false});
+    clearInterval(lrTimer); lrUpd(); lrTimer = setInterval(lrUpd, 2000);
+  }
+  function lrClose(){ clearInterval(lrTimer); lrApt = null; if(lrBox) lrBox.style.display = 'none'; }
+  function lrPick(hex){
+    var p = planes.get(hex); if(!p) return;
+    follow = true; select(hex);
+    if(p.marker){ progPan = true; map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 10), {animate:false}); progPan = false; }
+    renderPanel();
+  }
+  function lrList(){
+    var a = lrApt, arr = [], gnd = [];
+    planes.forEach(function(p){
+      var d = p.d; if(!d || d.lat==null) return;
+      var ll = p.marker && p.marker._map ? p.marker.getLatLng() : {lat:d.lat, lng:d.lon};
+      var dist = km(a[2], a[3], ll.lat, ll.lng);
+      if(d.ground){ if(dist < 3 && lrApp[d.hex]) { if(!lrLanded.some(function(x){ return x.hex===d.hex; })) lrLanded.unshift({hex:d.hex, call:d.call||d.hex, type:d.type, t:Date.now()}); } return; }
+      if(dist > 60 || d.alt==null || d.alt > 10000) return;
+      var diff = Math.abs(((bearing(ll.lat, ll.lng, a[2], a[3]) - (d.trk||0)) + 540) % 360 - 180);
+      if(diff > 60) return;
+      if(d.vr!=null && d.vr > 500) return;
+      arr.push([d, dist]); lrApp[d.hex] = Date.now();
+    });
+    arr.sort(function(x, y){ return x[1]-y[1]; });
+    return {arr:arr};
+  }
+  function lrUpd(){
+    if(!lrApt || !lrBox) return;
+    var L2 = lrList(), a = lrApt;
+    lrLanded = lrLanded.filter(function(x){ return Date.now() - x.t < 600000; }).slice(0, 4);
+    var rows = L2.arr.slice(0, 8).map(function(r){
+      var d = r[0], nm = r[1]/1.852, eta = d.gs>60 ? nm/d.gs*3600 : null;
+      var ideal = nm*318, dev = d.alt - ideal, st, col;
+      if(nm > 14){ st = 'Innflyging'; col = '#9fb0c0'; }
+      else if(Math.abs(dev) <= 400){ st = 'På glidebane'; col = '#6be08f'; }
+      else if(dev > 0){ st = 'Høy (+'+nb(Math.round(dev/100)*100)+' ft)'; col = '#ffd23f'; }
+      else { st = 'Lav ('+nb(Math.round(dev/100)*100)+' ft)'; col = '#ff9a3c'; }
+      if(nm < 5 && d.alt < 2500) st = 'Finale · ' + st;
+      var et = eta==null ? '' : (eta < 90 ? Math.round(eta)+' s' : Math.floor(eta/60)+' min '+String(Math.round(eta%60)).padStart(2,'0')+' s');
+      return '<div class="lrrow'+(d.hex===sel?' on':'')+'" data-hex="'+esc(d.hex)+'"><div><b>'+esc(d.call||d.hex.toUpperCase())+'</b><span>'+esc(d.type||'')+'</span><em>'+(et ? 'om '+et : '')+'</em></div><div class="s"><span>'+nb(nm)+' NM · '+nb(Math.round(d.alt/100)*100)+' ft'+(d.gs ? ' · '+Math.round(d.gs)+' kt' : '')+'</span><span style="color:'+col+'">'+st+'</span></div></div>';
+    }).join('');
+    lrBox.innerHTML = '<div class="lrh"><b>Landingsradar · '+esc(a[0])+'</b><span>'+esc(a[1])+'</span><button type="button" data-x aria-label="Lukk">×</button></div>'
+      + (rows || '<div class="lrn">Ingen fly på innflyging akkurat nå.</div>')
+      + (L2.arr.length ? '<button type="button" class="lrb" data-next>Følg neste landing</button>' : '')
+      + (lrLanded.length ? '<div class="lrl">Nylig landet: '+lrLanded.map(function(x){ return esc(x.call)+' ('+Math.max(1, Math.round((Date.now()-x.t)/60000))+' min siden)'; }).join(', ')+'</div>' : '')
+      + '<div class="lrn" style="font-size:11px">Glidebane beregnet mot 3° fra havnivå, så avviket er omtrentlig. Fly innen 60 km, under 10 000 ft, på vei mot flyplassen.</div>';
+  }
+  $('#bLr').onclick = function(){ lrOpen(null); };
   /* Redningsradar: redningshelikoptre og luftambulanser, gjenkjent på callsign/registrering (mange slår av transponderen, så ikke alle vises) */
   var rscOn = true; try{ rscOn = localStorage.getItem('flyblikk_rsc') !== '0'; }catch(e){}
   var RSC_CALL = /^(LIFEGUARD|MEDEVAC|RESCUE|RESQ|RESCU|SAR\d|HELIMED|AMBU|AIRAMB|AIRAMBU|CHRISTOPH|RETTUNG|SAMU|REGA|NLA\d|NORAMB|LUFTAMB|HEMS|RTH|DRF\d|DANRES|LAMB|MEDI|MEDIC|NHV|SVT\d)/;
