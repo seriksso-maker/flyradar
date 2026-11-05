@@ -1584,7 +1584,43 @@
     sim.r.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5)); sim.r.setSize(cL.W, cL.H, false);
     sim.cam3.aspect = cL.W/cL.H; sim.cam3.fov = sim.fov; sim.cam3.updateProjectionMatrix();
   }
-  function simBuildPlane(heli, tailCol){
+  // Flyselskapets logo og navn som dekor på skroget og halefinnen
+  function simLivery(d, tailCol, group){
+    var T = THREE, code = airOf(d), iata = IATA[code], name = (AIRLINES[code] || '').toUpperCase();
+    if(!iata && !name) return;
+    var hex = '#' + ('000000' + tailCol.toString(16)).slice(-6);
+    var cv = document.createElement('canvas'); cv.width = 1024; cv.height = 240; var c = cv.getContext('2d');
+    c.fillStyle = hex; c.textAlign = 'center'; c.textBaseline = 'middle';
+    var txt = name || iata, fs = 150; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif';
+    while(c.measureText(txt).width > 960 && fs > 40){ fs -= 6; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif'; }
+    c.fillText(txt, 512, 125);
+    var tex = new T.CanvasTexture(cv); tex.anisotropy = 4;
+    var mk = function(t){ return new T.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}); };
+    var fmat = mk(tex), fg = new T.PlaneGeometry(11.5, 11.5*240/1024);
+    var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
+    var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
+    // Logo på halefinnen
+    var lc = document.createElement('canvas'); lc.width = lc.height = 256; var lx = lc.getContext('2d');
+    function fallback(){
+      lx.clearRect(0, 0, 256, 256); lx.fillStyle = '#ffffff'; lx.beginPath(); lx.arc(128, 128, 120, 0, 7); lx.fill();
+      lx.fillStyle = hex; lx.font = '800 96px Arial,Helvetica,sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText(iata || code, 128, 136);
+    }
+    fallback();
+    var ltex = new T.CanvasTexture(lc), lmat = mk(ltex), lg = new T.PlaneGeometry(3.4, 3.4);
+    var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.7, 14.0); lr.rotation.y = Math.PI/2; group.add(lr);
+    var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.7, 14.0); ll.rotation.y = -Math.PI/2; group.add(ll);
+    if(iata){
+      var urls = ['https://pics.avs.io/al_square/256/256/'+iata+'.png', 'https://images.kiwi.com/airlines/128x128/'+iata+'.png'], n = 0;
+      (function tryNext(){
+        if(n >= urls.length) return;
+        var im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = function(){ try{ lx.clearRect(0, 0, 256, 256); lx.fillStyle = '#fff'; lx.beginPath(); lx.arc(128, 128, 124, 0, 7); lx.fill(); lx.save(); lx.beginPath(); lx.arc(128, 128, 118, 0, 7); lx.clip(); lx.drawImage(im, 10, 10, 236, 236); lx.restore(); ltex.needsUpdate = true; }catch(e){} };
+        im.onerror = function(){ n++; tryNext(); };
+        im.src = urls[n];
+      })();
+    }
+  }
+  function simBuildPlane(heli, tailCol, d){
     var T = THREE, g = new T.Group();
     var white = new T.MeshStandardMaterial({color:0xf2f5f8, roughness:.45, metalness:.1, side:T.DoubleSide});
     var grey = new T.MeshStandardMaterial({color:0x9aa5b1, roughness:.5, metalness:.3, side:T.DoubleSide});
@@ -1623,6 +1659,7 @@
       var inl = add(new T.CylinderGeometry(.85, .85, .2, 16), dark, e*5.8, -1.9, -3.75); inl.rotation.x = Math.PI/2;
     });
     g.userData.len = 37.6;
+    try{ if(d) simLivery(d, tailCol, g); }catch(e){}
     return g;
   }
   function simInit(){
@@ -1718,7 +1755,7 @@
     if(S.modelKey !== key){
       if(S.model) S.rig.remove(S.model);
       var colr = [0x1e4b8f, 0xb3261e, 0x0f7a5c, 0x6a3fb5, 0xc77d12][(parseInt(d.hex||'0', 16) || 0) % 5];
-      S.model = simBuildPlane(heli, colr); S.rig.add(S.model); S.modelKey = key;
+      S.model = simBuildPlane(heli, colr, d); S.rig.add(S.model); S.modelKey = key;
     }
     var rot = S.model.userData.rot; if(rot){ rot.rotation.y += 0.6; S.model.userData.trot.rotation.x += 0.9; }
     S.rig.rotation.set(cs.pitch*RAD, -cs.hdg*RAD, -cs.roll*RAD);
