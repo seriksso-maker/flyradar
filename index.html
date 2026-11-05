@@ -288,7 +288,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 23:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 23:55 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -352,7 +352,7 @@
   <button id="cclose" type="button">Tilbake til kart</button>
   <button id="cpil" type="button">Se deg rundt</button>
   <div id="pmini" hidden><div id="pmap"></div><div id="pcap"></div></div>
-  <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button><button data-v="style" id="cstyle">Cockpit: 747</button></div>
+  <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
 </div>
 
 <div class="status">
@@ -1615,12 +1615,13 @@
     return threeLoading;
   }
   var PAN_VIEWS = {
-    front:{eye:[0,0.05,0.1],  yaw:0,   pitch:0,  auto:false},
-    capt: {eye:[0.15,0.12,0.7], yaw:-51, pitch:-4, auto:false},
-    fo:   {eye:[-0.15,0.12,0.7], yaw:51, pitch:-4, auto:false},
-    back: {eye:[0,0.07,0.92], yaw:0,   pitch:-4, auto:false, fov:92},
-    pano: {eye:[0,0.1,0.4],   yaw:null, pitch:0, auto:true}
+    front:{eye:[0,0.02,0.1],  yaw:0,   pitch:0,  auto:false},
+    capt: {eye:[0.15,0.12,0.9], yaw:-52, pitch:-6, auto:false},
+    fo:   {eye:[-0.15,0.12,0.9], yaw:52, pitch:-6, auto:false},
+    back: {eye:[0,0.12,1.03], yaw:0,   pitch:-4, auto:false, fov:88},
+    pano: {eye:[0,0.1,0.5],   yaw:null, pitch:0, auto:true}
   };
+
   function mkTex(w, h){ var cv = document.createElement('canvas'); cv.width = w; cv.height = h; var t = new THREE.CanvasTexture(cv); t.minFilter = THREE.LinearFilter; return {cv:cv, tex:t, ctx:cv.getContext('2d')}; }
 
 
@@ -1642,78 +1643,6 @@
     c.fillStyle = '#2f353d'; for(var k=0;k<8;k++){ c.fillRect(8+k*4, 58, 3, 4); }
     t.tex.needsUpdate = true;
   }
-  function realism(g, T, X, ZF, ZB, Y0, Y1, scr){
-    function ptex(w, h, fn){ var cv = document.createElement('canvas'); cv.width = w; cv.height = h; fn(cv.getContext('2d'), w, h); var t = new T.CanvasTexture(cv); t.anisotropy = 4; return t; }
-    function noise(base, amp, repx, repy){
-      var t = ptex(128, 128, function(c, w, h){ c.fillStyle = base; c.fillRect(0, 0, w, h); for(var i=0;i<2600;i++){ var v = Math.random()*amp; c.fillStyle = 'rgba(' + (Math.random()<.5?'255,255,255':'0,0,0') + ',' + (v/255).toFixed(3) + ')'; c.fillRect(Math.random()*w, Math.random()*h, 2, 2); } });
-      t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(repx, repy); return t;
-    }
-    function pl(tex, w, h, x, y, z, rx, ry, rz, basic, op){
-      var m = new T.Mesh(new T.PlaneGeometry(w, h), basic ? new T.MeshBasicMaterial({map:tex, transparent:!!op, depthWrite:!op}) : new T.MeshLambertMaterial({map:tex}));
-      m.position.set(x, y, z); m.rotation.set(rx||0, ry||0, rz||0); g.add(m); return m;
-    }
-    // Støvete teppe og stoff
-    var carpet = new T.Mesh(new T.PlaneGeometry(2*X, ZB-ZF), new T.MeshLambertMaterial({map:noise('#3b3e43', 60, 12, 10)})); carpet.rotation.x = -Math.PI/2; carpet.position.set(0, Y0+0.012, (ZB+ZF)/2); g.add(carpet);
-    var wallTex = noise('#6d7279', 40, 5, 5);
-    [[0, ZF+0.004, 0, 2*X, Y1-Y0]].forEach(function(q){ var m = new T.Mesh(new T.PlaneGeometry(2*X-0.02, 0.35), new T.MeshLambertMaterial({map:wallTex})); m.position.set(0, -0.92, ZF+0.005); g.add(m); });
-    // Overheadpanel
-    var oh = ptex(768, 320, function(c, w, h){
-      c.translate(w, h); c.rotate(Math.PI);
-      c.fillStyle = '#1a2129'; c.fillRect(0, 0, w, h);
-      var amb = '#f2a63b', blu = '#4aa3ff', grn = '#47ff6a', wht = '#e8ecef', red = '#e0513f';
-      function panel(x, y, pw, ph, title){ c.fillStyle = '#222b35'; c.fillRect(x, y, pw, ph); c.strokeStyle = '#5b6672'; c.lineWidth = 1.5; c.strokeRect(x+.5, y+.5, pw-1, ph-1); if(title){ c.fillStyle = '#cfd5db'; c.font = '700 9px sans-serif'; c.textAlign = 'center'; c.fillText(title, x+pw/2, y+11); } }
-      function btns(x, y, nx, ny, cols){ for(var i=0;i<nx;i++) for(var j=0;j<ny;j++){ var cc = cols[(i*3+j*5)%cols.length]; c.fillStyle = '#0b0e12'; c.fillRect(x+i*22, y+j*20, 18, 15); c.fillStyle = cc; c.fillRect(x+i*22+2, y+j*20+2, 14, 4); c.fillStyle = '#6a7480'; c.fillRect(x+i*22+2, y+j*20+8, 14, 5); } }
-      // venstre
-      panel(8, 8, 232, 304, 'HYD  ·  ADIRS  ·  FLT CTL'); btns(18, 28, 9, 6, [wht, blu, amb, grn, wht, red]);
-      c.fillStyle = '#0b0e12'; c.fillRect(18, 160, 212, 40); c.fillStyle = grn; c.font = '700 14px monospace'; c.textAlign = 'center'; c.fillText('IR1   IR2   IR3', 124, 186);
-      btns(18, 216, 9, 4, [blu, wht, amb, wht]);
-      // midten: skjema
-      panel(248, 8, 272, 304, null);
-      c.fillStyle = '#0b0e12'; c.fillRect(258, 16, 252, 26); c.fillStyle = '#e04a3a'; c.font = '700 13px monospace'; c.fillText('ENG 1        APU        ENG 2', 384, 34);
-      c.strokeStyle = grn; c.lineWidth = 2; c.beginPath(); c.moveTo(270, 80); c.lineTo(500, 80); c.moveTo(270, 130); c.lineTo(500, 130); c.moveTo(384, 60); c.lineTo(384, 240); c.moveTo(300, 80); c.lineTo(300, 200); c.moveTo(468, 80); c.lineTo(468, 200); c.moveTo(270, 200); c.lineTo(500, 200); c.stroke();
-      c.strokeStyle = wht; c.lineWidth = 1.5; c.beginPath(); c.moveTo(270, 105); c.lineTo(500, 105); c.moveTo(270, 160); c.lineTo(500, 160); c.moveTo(340, 130); c.lineTo(340, 240); c.moveTo(430, 130); c.lineTo(430, 240); c.stroke();
-      [[300,80],[468,80],[300,200],[468,200],[384,130],[340,160],[430,160],[384,200]].forEach(function(q){ c.fillStyle = '#0b0e12'; c.fillRect(q[0]-12, q[1]-9, 24, 18); c.fillStyle = q[0]%2?blu:grn; c.fillRect(q[0]-9, q[1]-6, 18, 5); c.fillStyle = '#7b8591'; c.fillRect(q[0]-9, q[1], 18, 5); });
-      btns(268, 250, 11, 2, [wht, grn, amb]);
-      // høyre
-      panel(528, 8, 232, 304, 'AIR COND  ·  ANTI ICE  ·  CABIN'); btns(538, 28, 9, 6, [grn, wht, blu, amb, wht]);
-      c.fillStyle = '#0b0e12'; c.fillRect(538, 160, 212, 40); c.fillStyle = amb; c.font = '700 14px monospace'; c.fillText('CAB PRESS  ·  PACK 1  2', 644, 186);
-      btns(538, 216, 9, 4, [wht, blu, grn, amb]);
-    });
-
-    pl(oh, 1.5, 0.62, 0, Y1-0.132, -0.85, Math.PI/2, 0, 0, true);
-    for(var kk=0;kk<9;kk++){ var kb = new T.Mesh(new T.CylinderGeometry(0.017, 0.02, 0.03, 14), new T.MeshLambertMaterial({color:0xeceff2})); kb.position.set(-0.62+kk*0.155, Y1-0.158, -0.7 - (kk%3)*0.13); g.add(kb); var kr = new T.Mesh(new T.CylinderGeometry(0.022, 0.022, 0.006, 14), new T.MeshLambertMaterial({color:0xc9a64a})); kr.position.set(-0.62+kk*0.155, Y1-0.145, -0.7 - (kk%3)*0.13); g.add(kr); }
-    // Sikringspaneler og sidekonsoller
-    var cb = ptex(256, 256, function(c, w, h){ c.fillStyle = '#16191d'; c.fillRect(0, 0, w, h); for(var r=0;r<12;r++) for(var k=0;k<12;k++){ var col = Math.random()<.08 ? '#d9a82a' : (Math.random()<.07 ? '#c04a3a' : '#e9ecef'); c.fillStyle = '#050607'; c.fillRect(8+k*20, 8+r*20, 14, 14); c.fillStyle = col; c.beginPath(); c.arc(15+k*20, 15+r*20, 4.5, 0, 7); c.fill(); } });
-    // (sikringspaneler fjernet: bakvinduer)
-    var sc = ptex(256, 256, function(c, w, h){ c.fillStyle = '#20252b'; c.fillRect(0, 0, w, h); c.fillStyle = '#0a0c0f'; c.fillRect(16, 20, 224, 90); c.fillStyle = '#2d6a3a'; c.fillRect(24, 28, 208, 74); c.fillStyle = '#d6dde4'; c.font = '700 14px monospace'; c.fillText('MCDU  FMGC', 40, 52); c.fillStyle = '#47ff6a'; for(var i=0;i<4;i++) c.fillText('─ ─ ─ ─ ─ ─ ─ ─', 34, 70+i*13);
-      for(var r=0;r<5;r++) for(var k=0;k<8;k++){ c.fillStyle = '#0d0f12'; c.fillRect(18+k*28, 124+r*26, 22, 18); c.fillStyle = '#6a727d'; c.fillRect(20+k*28, 126+r*26, 18, 4); } });
-    [-1,1].forEach(function(e){ var pb = new T.Mesh(new T.BoxGeometry(0.15, 0.9, 0.5), new T.MeshLambertMaterial({color:0x2a3037})); pb.position.set(e*0.185, -0.65, -0.35); g.add(pb); pl(sc, 0.14, 0.16, e*0.185, -0.198, -0.4, -Math.PI/2, 0, 0, true); });
-    var bp = ptex(128, 128, function(c, w, h){ c.fillStyle = '#1b2026'; c.fillRect(0, 0, w, h); var cl = ['#4aa3ff','#e8ecef','#e8ecef','#f2a63b','#47ff6a']; for(var r=0;r<7;r++) for(var k=0;k<6;k++){ c.fillStyle = '#0b0e12'; c.fillRect(6+k*20, 6+r*17, 16, 13); c.fillStyle = cl[(r*2+k)%5]; c.fillRect(8+k*20, 8+r*17, 12, 4); c.fillStyle = '#7b8591'; c.fillRect(8+k*20, 14+r*17, 12, 4); } });
-    [-1,1].forEach(function(e){ pl(bp, 0.14, 0.14, e*0.185, -0.198, -0.19, -Math.PI/2, 0, 0, true); });
-    // Radiopanel på pedestalen
-    var rp = ptex(128, 256, function(c, w, h){ c.fillStyle = '#23282e'; c.fillRect(0, 0, w, h); for(var i=0;i<4;i++){ c.fillStyle = '#050607'; c.fillRect(10, 14+i*58, 108, 24); c.fillStyle = '#47e0ff'; c.font = '700 18px monospace'; c.fillText(['118.250','121.500','7000','TCAS'][i], 16, 33+i*58); c.fillStyle = '#6a727d'; c.beginPath(); c.arc(30, 48+i*58, 4, 0, 7); c.arc(98, 48+i*58, 4, 0, 7); c.fill(); } });
-    pl(rp, 0.2, 0.1, 0, -0.192, -0.13, -Math.PI/2, 0, 0, true);
-    // FCU på glareshield (live)
-    var fcu = ptex(512, 64, function(){}); scr.fcu = {cv:fcu.image, tex:fcu, ctx:fcu.image.getContext('2d')};
-    pl(fcu, 0.78, 0.098, 0, -0.043, ZF+0.1, -Math.PI/2, 0, 0, true);
-    // Vinduglass: svak refleksjon og kantmørkning
-    var gl = ptex(256, 256, function(c, w, h){
-      var g1 = c.createLinearGradient(0, 0, w, h); g1.addColorStop(0, 'rgba(255,255,255,0.00)'); g1.addColorStop(.35, 'rgba(255,255,255,0.09)'); g1.addColorStop(.5, 'rgba(255,255,255,0.00)'); g1.addColorStop(.7, 'rgba(255,255,255,0.05)'); g1.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g1; c.fillRect(0, 0, w, h);
-      var rg = c.createRadialGradient(w/2, h/2, h*.25, w/2, h/2, h*.78); rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, 'rgba(0,10,20,0.28)'); c.fillStyle = rg; c.fillRect(0, 0, w, h);
-      c.fillStyle = 'rgba(40,90,60,0.05)'; c.fillRect(0, 0, w, h); });
-    [-0.53, 0.53].forEach(function(x){ pl(gl, 0.98, 0.74, x, 0.35, ZF+0.012, 0, 0, 0, true, 1); });
-    pl(gl, 0.95, 0.74, -(X-0.006), 0.35, -0.525, 0, Math.PI/2, 0, true, 1); pl(gl, 0.95, 0.74, (X-0.006), 0.35, -0.525, 0, -Math.PI/2, 0, true, 1);
-    // Solskjermer
-    [-0.53, 0.53].forEach(function(x){ var sv = new T.Mesh(new T.BoxGeometry(0.86, 0.02, 0.2), new T.MeshLambertMaterial({color:0x25282d})); sv.position.set(x, 0.7, ZF+0.1); sv.rotation.x = -0.35; g.add(sv); });
-    // Bakdør og jump-seat
-    var dr = ptex(256, 512, function(c, w, h){ c.fillStyle = '#2a2f36'; c.fillRect(0, 0, w, h); c.fillStyle = '#0d0f12'; c.fillRect(70, 50, 116, 120); c.fillStyle = '#222831'; c.fillRect(76, 56, 104, 108); c.fillStyle = '#7d868f'; c.fillRect(190, 250, 28, 8); c.strokeStyle = '#4b535e'; c.strokeRect(20.5, 20.5, 215, 470); });
-    [-0.56, 0.56].forEach(function(x){ pl(gl, 0.98, 0.74, x, 0.35, ZB-0.012, 0, Math.PI, 0, true, 1); });
-    pl(gl, 0.73, 0.74, -(X-0.006), 0.35, 0.485, 0, Math.PI/2, 0, true, 1); pl(gl, 0.73, 0.74, (X-0.006), 0.35, 0.485, 0, -Math.PI/2, 0, true, 1);
-    var js = new T.Mesh(new T.BoxGeometry(0.44, 0.1, 0.4), new T.MeshLambertMaterial({color:0x2b2f36})); js.position.set(0, -0.66, 0.75); g.add(js);
-    var jb = new T.Mesh(new T.BoxGeometry(0.44, 0.5, 0.08), new T.MeshLambertMaterial({color:0x2b2f36})); jb.position.set(0, -0.35, 0.9); g.add(jb);
-  }
-
-
   function drawSD(t){
     var c = t.ctx, W = t.cv.width, H = t.cv.height, mono = 'ui-monospace,Menlo,monospace', alt = Math.max(0, cs.alt||0);
     c.fillStyle = '#04070b'; c.fillRect(0, 0, W, H);
@@ -1728,187 +1657,208 @@
     c.textAlign = 'center'; c.fillStyle = '#9aa3ad'; c.font = '600 11px ' + mono; c.fillText('SIM · beregnet fra flydata', W/2, H-8);
     t.tex.needsUpdate = true;
   }
-  function a320(g, T, X, ZF, ZB, Y0, Y1, b747){
-    function m(c){ return new T.MeshLambertMaterial({color:c}); }
-    function cyl(r1, r2, h, c, x, y, z, rx, rz){ var q = new T.Mesh(new T.CylinderGeometry(r1, r2, h, 14), m(c)); q.position.set(x, y, z); q.rotation.set(rx||0, 0, rz||0); g.add(q); return q; }
-    function ball(r, c, x, y, z, sx, sy, sz){ var q = new T.Mesh(new T.SphereGeometry(r, 14, 12), m(c)); q.position.set(x, y, z); q.scale.set(sx||1, sy||1, sz||1); g.add(q); return q; }
-    function bx(w, h, d, c, x, y, z, rx){ var q = new T.Mesh(new T.BoxGeometry(w, h, d), m(c)); q.position.set(x, y, z); q.rotation.x = rx||0; g.add(q); return q; }
-    if(!b747){
-    // Pedestal: gasshendler med spor, klaffer, speedbrake, trimhjul
-    bx(0.2, 0.012, 0.22, 0x14171a, 0, -0.197, -0.5);
-    [-0.035, 0.035].forEach(function(x){ bx(0.012, 0.012, 0.2, 0x050607, x, -0.2, -0.5); cyl(0.011, 0.011, 0.16, 0x1d2126, x, -0.14, -0.43, 0.55); ball(0.025, 0x0d0f12, x, -0.075, -0.385, 1, 0.8, 1.3); bx(0.02, 0.008, 0.03, 0xe8e8e8, x, -0.062, -0.39, 0.4); });
-    cyl(0.009, 0.009, 0.1, 0x2a2f35, -0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, -0.085, -0.1, -0.455);      // speedbrake
-    cyl(0.009, 0.009, 0.1, 0x2a2f35, 0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, 0.085, -0.1, -0.455);       // klaffer
-    [-1, 1].forEach(function(e){ var w = cyl(0.075, 0.075, 0.025, 0x23272c, e*0.125, -0.3, -0.3, 0, Math.PI/2); for(var k=0;k<10;k++){ var a = k/10*Math.PI*2; bx(0.026, 0.01, 0.01, 0x777d85, e*0.125, -0.3+Math.sin(a)*0.075, -0.3+Math.cos(a)*0.075); } });
-    }
-    if(!b747){
-    // Sidestikker
-    [-1, 1].forEach(function(e){
-      var x = e*0.82;
-      bx(0.14, 0.05, 0.2, 0x3b3f45, x, -0.66, 0.02);
-      cyl(0.016, 0.022, 0.11, 0x24282d, x - e*0.012, -0.6, 0.02, 0, e*0.18);
-      ball(0.034, 0x14171a, x - e*0.022, -0.53, 0.0, 0.9, 1.6, 1.3);
-      ball(0.008, 0xc02020, x - e*0.03, -0.505, -0.03);
-      bx(0.1, 0.02, 0.18, 0x4f545b, x + e*0.05, -0.55, 0.12);               // armlene
-      cyl(0.03, 0.03, 0.03, 0x1a1d21, e*0.98, -0.42, -0.1, 0, Math.PI/2);    // tiller
-    });
-    }
-
-    if(b747){
-      // Boeing 747: fire gasshendler med reversspaker, speedbrake, klaffer
-      bx(0.2, 0.012, 0.24, 0x14171a, 0, -0.197, -0.5);
-      for(var k=0;k<4;k++){ var lx = -0.075 + k*0.05; bx(0.012, 0.012, 0.22, 0x050607, lx, -0.2, -0.5);
-        cyl(0.012, 0.012, 0.19, 0x15181c, lx, -0.135, -0.44, 0.6); ball(0.026, 0x0b0c0e, lx, -0.06, -0.385, 1, 0.8, 1.35); bx(0.016, 0.008, 0.03, 0xdadada, lx, -0.042, -0.39, 0.45);
-        cyl(0.008, 0.008, 0.09, 0x30343a, lx, -0.16, -0.54, -0.4); ball(0.013, 0x30343a, lx, -0.12, -0.565); }
-      cyl(0.009, 0.009, 0.12, 0x3a3f45, -0.108, -0.14, -0.45, 0.45); ball(0.017, 0x3a3f45, -0.108, -0.085, -0.425);      // speedbrake
-      cyl(0.009, 0.009, 0.12, 0x3a3f45, 0.108, -0.14, -0.45, 0.45); ball(0.017, 0x3a3f45, 0.108, -0.085, -0.425);        // klaffer
-      [-1, 1].forEach(function(e){ var w = cyl(0.075, 0.075, 0.025, 0x23272c, e*0.125, -0.3, -0.3, 0, Math.PI/2); for(var q=0;q<10;q++){ var an = q/10*Math.PI*2; bx(0.026, 0.01, 0.01, 0x777d85, e*0.125, -0.3+Math.sin(an)*0.075, -0.3+Math.cos(an)*0.075); } });
-      // Ratt (yoke) foran hver pilot
-      [-0.6, 0.6].forEach(function(px){
-        var col = cyl(0.022, 0.03, 0.42, 0x1b1e22, px, -0.55, -0.34, 0.75); col.rotation.x = 0.75;
-        var w = new T.Mesh(new T.TorusGeometry(0.105, 0.013, 10, 32, Math.PI*1.62), m(0x17191d)); w.position.set(px, -0.37, -0.19); w.rotation.set(-0.25, 0, 2.2); g.add(w);
-        bx(0.07, 0.07, 0.05, 0x17191d, px, -0.4, -0.2); bx(0.05, 0.02, 0.012, 0xd8d8d8, px, -0.385, -0.178);
-        [-1, 1].forEach(function(e){ cyl(0.017, 0.017, 0.1, 0x101214, px + e*0.1, -0.4, -0.2, 0, 0); });
-      });
-    }
-    if(!b747){
-      [-0.3,-0.12,0.12,0.3].forEach(function(x){ cyl(0.017, 0.017, 0.012, 0xded8c8, x, -0.036, ZF+0.14); cyl(0.021, 0.021, 0.006, 0xc9a64a, x, -0.04, ZF+0.14); });
-      [-0.64, 0.64].forEach(function(x){ bx(0.26, 0.012, 0.1, 0x191d22, x, -0.044, ZF+0.1); [-0.08,0,0.08].forEach(function(dx){ cyl(0.014, 0.014, 0.01, 0xded8c8, x+dx, -0.035, ZF+0.13); cyl(0.018, 0.018, 0.005, 0xc9a64a, x+dx, -0.039, ZF+0.13); }); });
-    }
-    // Visker
-    [-1, 1].forEach(function(e){ var w = bx(0.012, 0.5, 0.008, 0x0a0b0d, e*0.5, 0.33, ZF+0.02); w.rotation.z = e*0.55; var b = bx(0.008, 0.42, 0.006, 0x0a0b0d, e*0.5+e*0.04, 0.33, ZF+0.018); b.rotation.z = e*0.5; });
-    // Taklys og overhead-kant
-    bx(0.14, 0.01, 0.14, 0xfff4d8, 0, Y1-0.012, 0.3); bx(1.12, 0.05, 0.03, 0x2a2d31, 0, Y1-0.15, -0.58);
-    // Haner og dokumentlomme
-    [-1, 1].forEach(function(e){ bx(0.03, 0.04, 0.3, 0x2a2d31, e*(X-0.05), 0.55, -0.15); bx(0.02, 0.2, 0.28, 0x505560, e*(X-0.03), -0.45, 0.45); });
+  /* ===== Cockpit (A320-stil) bygget etter referansebilde ===== */
+  function ptex(w, h, fn){ var cv = document.createElement('canvas'); cv.width = w; cv.height = h; fn(cv.getContext('2d'), w, h); var t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t; }
+  function noiseTex(base, amp, rep){
+    var t = ptex(128, 128, function(c, w, h){ c.fillStyle = base; c.fillRect(0, 0, w, h); for(var i=0;i<2400;i++){ c.fillStyle = 'rgba(' + (Math.random()<.5?'255,255,255':'0,0,0') + ',' + (Math.random()*amp/255).toFixed(3) + ')'; c.fillRect(Math.random()*w, Math.random()*h, 2, 2); } });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep||1, rep||1); return t;
   }
 
   function panBuild(){
-    var T = THREE, g = new T.Group(), B7 = cockStyle === '747';
-    var PAL = B7 ? {f:0x8b8981, s:0x908e86, r:0xa7a59d, b:0x858379, d:0x35373b} : {f:0x2c333b, s:0x303840, r:0x1c2127, b:0x272e35, d:0x262c33};
-    function mat(c){ return new T.MeshLambertMaterial({color:c}); }
-    function box(w, h, d, c, x, y, z, parent){ var m = new T.Mesh(new T.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); (parent||g).add(m); return m; }
-    function wall(shape, c){ return new T.Mesh(new T.ShapeGeometry(shape), new T.MeshLambertMaterial({color:c, side:T.DoubleSide})); }
-    function rectP(s, x0, y0, x1, y1, hole){ var p = hole ? new T.Path() : s; p.moveTo(x0, y0); p.lineTo(x1, y0); p.lineTo(x1, y1); p.lineTo(x0, y1); p.lineTo(x0, y0); return p; }
-    var i, X = 1.25, ZF = -1.2, ZB = 0.95, Y0 = -1.1, Y1 = 0.8;
-    // Frontvegg med to vinduer
-    var s = new T.Shape(); rectP(s, -X, Y0, X, Y1);
-    s.holes.push(rectP(null, -1.02, -0.02, -0.04, 0.72, true), rectP(null, 0.04, -0.02, 1.02, 0.72, true));
-    var fw = wall(s, PAL.f); fw.position.z = ZF; g.add(fw);
-    // Sidevegger med vindu
-    [-1, 1].forEach(function(sx){
-      var sh = new T.Shape(); rectP(sh, ZF, Y0, ZB, Y1);
-      sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true), rectP(null, 0.12, -0.02, 0.85, 0.72, true));
-      var sw = wall(sh, PAL.s); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
-    });
-    box(2*X, 0.02, ZB-ZF, 0x2a2d31, 0, Y0, (ZB+ZF)/2);                 // gulv
-    box(2*X, 0.02, ZB-ZF, PAL.r, 0, Y1, (ZB+ZF)/2);                 // tak
-    var bs = new T.Shape(); rectP(bs, -X, Y0, X, Y1); bs.holes.push(rectP(null, -1.05, -0.02, -0.07, 0.72, true), rectP(null, 0.07, -0.02, 1.05, 0.72, true));
-    var bw = wall(bs, PAL.b); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
-    [-0.56, 0.56].forEach(function(bx){ box(0.98, 0.03, 0.03, 0x3b3f45, bx, 0.725, ZB-0.01); box(0.98, 0.03, 0.03, 0x3b3f45, bx, -0.03, ZB-0.01); });
-    box(1.5, 0.12, 0.62, B7 ? 0x8d9299 : 0x1c232b, 0, Y1-0.07, -0.85);                 // overheadpanel
-    // Dashbord og glareshield
-    box(2*X-0.02, 0.5, 0.58, PAL.d, 0, -0.55, ZF+0.31);
-    box(2*X-0.02, 0.05, 0.12, 0x202328, 0, -0.07, ZF+0.1);
-    box(0.22, 0.9, 0.5, 0x4a4f57, 0, -0.65, -0.35);                    // sentersokkel
-    // Skjermer
-    var scr = {};
-    function screen(key, w, h, x, y, tw, th){
-      var t = mkTex(tw, th); scr[key] = t;
-      var m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({map:t.tex}));
-      m.position.set(x, y, ZF+0.62); m.rotation.x = -0.3; g.add(m);
-      var fr = new T.Mesh(new T.PlaneGeometry(w+0.025, h+0.025), new T.MeshBasicMaterial({color:0x06080a}));
-      fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.translateZ(-0.002); g.add(fr);
+    var T = THREE, g = new T.Group(), heads = [], scr = {};
+    function mat(c, o){ return new T.MeshLambertMaterial(Object.assign({color:c}, o||{})); }
+    function bas(map, o){ return new T.MeshBasicMaterial(Object.assign({map:map, side:T.DoubleSide}, o||{})); }
+    // Avrundet boks (jevne normaler => ikke legoklosser)
+    function rbox(w, h, d, r, c, x, y, z, rot, parent){
+      var geo = new T.BoxGeometry(w, h, d, 6, 6, 6), p = geo.attributes.position, n = geo.attributes.normal;
+      var hx = w/2-r, hy = h/2-r, hz = d/2-r, v = new T.Vector3(), q = new T.Vector3(), dv = new T.Vector3();
+      for(var i=0;i<p.count;i++){
+        v.fromBufferAttribute(p, i); q.set(clampN(v.x,-hx,hx), clampN(v.y,-hy,hy), clampN(v.z,-hz,hz)); dv.copy(v).sub(q); var l = dv.length();
+        if(l > 1e-6){ dv.divideScalar(l); n.setXYZ(i, dv.x, dv.y, dv.z); p.setXYZ(i, q.x+dv.x*r, q.y+dv.y*r, q.z+dv.z*r); }
+      }
+      var m = new T.Mesh(geo, (typeof c === 'object') ? c : mat(c)); m.position.set(x, y, z); if(rot) m.rotation.set(rot[0]||0, rot[1]||0, rot[2]||0); (parent||g).add(m); return m;
     }
-    var fas = new T.Mesh(new T.PlaneGeometry(2*X-0.06, 0.5), new T.MeshLambertMaterial({color:0x3d4148})); fas.position.set(0, -0.2, ZF+0.606); fas.rotation.x = -0.3; g.add(fas);
-    screen('pfdL', 0.27, 0.27, -0.84, -0.17, 256, 256); screen('ndL', 0.27, 0.27, -0.55, -0.17, 256, 256);
-    screen('info', 0.25, 0.2, -0.02, -0.12, 320, 256); screen('sd', 0.25, 0.19, -0.02, -0.355, 320, 240);
-    screen('ndR', 0.27, 0.27, 0.51, -0.17, 256, 256); screen('pfdR', 0.27, 0.27, 0.8, -0.17, 256, 256);
-    // Detaljer: overheadpanel med brytere, sidepaneler, sikringspaneler, vindusrammer
-    var rnd = 7; function rr2(){ rnd = (rnd*9301 + 49297) % 233280; return rnd/233280; }
-    [-1,1].forEach(function(sx){
-      box(0.03, 0.5, 0.7, 0x1a1e23, sx*(X-0.02), -0.55, -0.55);               // sidekonsoll
-      box(0.03, 0.04, 0.7, 0x3b3f45, sx*(X-0.01), 0.725, 0.5);
-      box(0.05, 0.05, 0.9, 0x0f1216, sx*(X-0.03), 0.76, -0.1);               // sol­skjerm-liste
-    });
-    // Vindusrammer
-    [[-0.53,0.35],[0.53,0.35]].forEach(function(w){
-      box(0.98, 0.03, 0.04, 0x3b3f45, w[0], 0.725, ZF+0.01); box(0.98, 0.03, 0.04, 0x3b3f45, w[0], -0.03, ZF+0.01);
-    });
-    box(0.08, 0.76, 0.05, 0x3b3f45, 0, 0.35, ZF+0.01);                       // midtstolpe
-    // Pedaler
-    [-0.6, 0.6].forEach(function(px){ [-1,1].forEach(function(e){ var pd = new T.Mesh(new T.BoxGeometry(0.09, 0.14, 0.02), mat(0x2d3238)); pd.position.set(px+e*0.11, -0.8, -0.55); pd.rotation.x = -0.5; g.add(pd); }); });
-    // Piloter
-    var heads = [];
-    function limb(P, a, b, r1, r2, c){
-      var A = new T.Vector3(a[0],a[1],a[2]), B = new T.Vector3(b[0],b[1],b[2]), len = A.distanceTo(B);
-      var m = new T.Mesh(new T.CylinderGeometry(r2, r1, len, 14), mat(c)); m.position.copy(A).add(B).multiplyScalar(0.5);
-      m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), B.clone().sub(A).normalize()); P.add(m);
-      [[A,r1],[B,r2]].forEach(function(e){ var s = new T.Mesh(new T.SphereGeometry(e[1], 14, 12), mat(c)); s.position.copy(e[0]); P.add(s); });
+    function ell(rx, ry, rz, c, x, y, z, parent){ var m = new T.Mesh(new T.SphereGeometry(1, 28, 20), (typeof c === 'object') ? c : mat(c)); m.scale.set(rx, ry, rz); m.position.set(x, y, z); (parent||g).add(m); return m; }
+    function quad(p, m, uv){
+      var u = uv || [0,0,1,0,1,1,0,1], geo = new T.BufferGeometry();
+      geo.setAttribute('position', new T.Float32BufferAttribute([].concat(p[0], p[1], p[2], p[0], p[2], p[3]), 3));
+      geo.setAttribute('uv', new T.Float32BufferAttribute([u[0],u[1],u[2],u[3],u[4],u[5],u[0],u[1],u[4],u[5],u[6],u[7]], 2));
+      geo.computeVertexNormals(); var me = new T.Mesh(geo, m); g.add(me); return me;
     }
-    function ell(P, rx, ry, rz, c, x, y, z){ var m = new T.Mesh(new T.SphereGeometry(1, 24, 18), mat(c)); m.scale.set(rx, ry, rz); m.position.set(x, y, z); P.add(m); return m; }
-    function pilot(px, stripes, cap, skin, hair, jacket){
-      var P = new T.Group(); P.position.set(px, 0, 0.18); g.add(P);
-      var shirt = 0xf4f5f7, pants = 0x151a28, shoe = 0x0b0b0d, top = jacket ? 0x131b33 : shirt;
-      // Sete
-      ell(P, 0.26, 0.06, 0.28, 0x1b2a45, 0, -0.76, 0.12);
-      ell(P, 0.27, 0.4, 0.09, 0x1b2a45, 0, -0.38, 0.41); [-1,1].forEach(function(e){ ell(P, 0.045, 0.36, 0.1, 0x4f8fd0, e*0.27, -0.38, 0.4); });
-      box(0.1, 0.045, 0.012, 0xd9362c, 0, -0.5, 0.505, P); box(0.16, 0.05, 0.012, 0x2a3a5c, 0, -0.62, 0.505, P);
-      ell(P, 0.2, 0.11, 0.075, 0x5a9ad6, 0, -0.02, 0.4);
-      box(0.05, 0.05, 0.3, 0x4a4f56, 0.3*(px<0?-1:1), -0.5, 0.15, P);
-      // Kropp
-      ell(P, 0.19, 0.17, 0.12, top, 0, -0.2, 0.21);                       // bryst
-      ell(P, 0.16, 0.2, 0.11, top, 0, -0.45, 0.22);
-      if(jacket){ ell(P, 0.05, 0.1, 0.02, shirt, 0, -0.2, 0.098); for(var bi=0;bi<2;bi++) ell(P, 0.012, 0.012, 0.006, 0xd8b04a, 0.03, -0.4-bi*0.07, 0.108); }                       // mage
-      ell(P, 0.17, 0.1, 0.13, pants, 0, -0.66, 0.2);                        // hofter
-      limb(P, [0,-0.12,0.2], [0,-0.04,0.2], 0.045, 0.042, skin);            // hals
-      var tie = new T.Mesh(new T.BoxGeometry(0.035, 0.3, 0.008), mat(0x141a2e)); tie.position.set(0, -0.32, 0.098); tie.rotation.x = -0.08; P.add(tie);
-      var col = new T.Mesh(new T.TorusGeometry(0.058, 0.014, 8, 20), mat(shirt)); col.rotation.x = Math.PI/2; col.position.set(0, -0.115, 0.2); P.add(col);
-      // Hode
-      var hd = new T.Group(); hd.position.set(0, 0.04, 0.2); P.add(hd); heads.push(hd);
-      ell(hd, 0.088, 0.115, 0.1, skin, 0, 0, 0);
-      var hr = new T.Mesh(new T.SphereGeometry(1, 28, 16, 0, Math.PI*2, 0, Math.PI*0.64), mat(hair)); hr.scale.set(0.096, 0.122, 0.108); hr.position.set(0, 0.006, 0.014); hr.rotation.x = 0.42; hd.add(hr);   // hår
-      ell(hd, 0.03, 0.04, 0.03, skin, 0, -0.012, -0.1);                      // nese
-      [-1,1].forEach(function(e){
-        ell(hd, 0.014, 0.009, 0.007, 0xf2f2f2, e*0.035, 0.025, -0.094); ell(hd, 0.006, 0.006, 0.004, 0x1d130c, e*0.035, 0.025, -0.1);      // øyne
-        box(0.04, 0.007, 0.01, hair, e*0.035, 0.045, -0.092, hd);            // bryn
-        ell(hd, 0.014, 0.028, 0.018, skin, e*0.092, -0.005, 0.0);            // ører
-      });
-      ell(hd, 0.03, 0.006, 0.01, 0x8a4b44, 0, -0.06, -0.088);                // munn
-      // Headsett
-      var hb = new T.Mesh(new T.TorusGeometry(0.1, 0.006, 8, 24, Math.PI), mat(0x15181c)); hb.rotation.z = 0; hb.position.set(0, 0.0, 0.0); hb.rotation.y = Math.PI/2; hd.add(hb);
-      [-1,1].forEach(function(e){ var c = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 0.03, 16), mat(0x14171b)); c.rotation.z = Math.PI/2; c.position.set(e*0.1, -0.005, 0.005); hd.add(c); });
-      limb(hd, [-0.1,-0.02,-0.01], [-0.06,-0.07,-0.08], 0.004, 0.004, 0x14171b);
-      if(cap){ var cp = new T.Mesh(new T.CylinderGeometry(0.1, 0.108, 0.06, 24), mat(0x0f1420)); cp.position.set(0, 0.125, -0.005); cp.rotation.x = -0.1; hd.add(cp);
-        var ct = new T.Mesh(new T.CylinderGeometry(0.12, 0.1, 0.03, 24), mat(0x111726)); ct.position.set(0, 0.16, -0.015); ct.rotation.x = -0.1; hd.add(ct);
-        var br = new T.Mesh(new T.CylinderGeometry(0.1, 0.1, 0.008, 20, 1, false, -Math.PI/2, Math.PI), mat(0x07090d)); br.scale.set(1,1,0.9); br.position.set(0, 0.096, -0.07); br.rotation.x = 0.15; br.rotation.y = Math.PI; hd.add(br);
-        ell(hd, 0.016, 0.016, 0.004, 0xd8b04a, 0, 0.13, -0.108); }
-      // Armer og ben
-      [-1,1].forEach(function(e){
-        var sh = [e*0.2,-0.17,0.22], el = [e*0.25,-0.4,0.14], hn = [e*0.2,-0.5,-0.14];
-        ell(P, 0.07, 0.05, 0.08, top, e*0.2, -0.17, 0.22);
-        limb(P, sh, el, 0.055, 0.048, top); limb(P, el, hn, 0.046, 0.038, top);
-        (function(){ var dv = new T.Vector3(hn[0]-el[0], hn[1]-el[1], hn[2]-el[2]), q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0,0,1), dv.clone().normalize());
-          var cf = new T.Mesh(new T.TorusGeometry(0.04, 0.012, 8, 18), mat(shirt)); cf.position.set(el[0]+dv.x*0.93, el[1]+dv.y*0.93, el[2]+dv.z*0.93); cf.quaternion.copy(q); P.add(cf);
-          if(jacket) for(var k=0;k<stripes;k++){ var sr = new T.Mesh(new T.TorusGeometry(0.044, 0.0035, 6, 18), mat(0xd8b04a)); sr.position.set(el[0]+dv.x*(0.7-0.055*k), el[1]+dv.y*(0.7-0.055*k), el[2]+dv.z*(0.7-0.055*k)); sr.quaternion.copy(q); P.add(sr); } })();
-        ell(P, 0.04, 0.025, 0.055, skin, hn[0], hn[1]-0.01, hn[2]-0.05);
-        var ep = new T.Mesh(new T.BoxGeometry(0.1, 0.012, 0.055), mat(0x141a2e)); ep.position.set(e*0.2, -0.105, 0.22); ep.rotation.z = -e*0.25; P.add(ep);
-        for(var k=0;k<stripes;k++){ var sp = new T.Mesh(new T.BoxGeometry(0.1, 0.005, 0.007), mat(0xd8b04a)); sp.position.set(e*0.2, -0.097, 0.2+0.014*k); sp.rotation.z = -e*0.25; P.add(sp); }
-        limb(P, [e*0.1,-0.66,0.2], [e*0.11,-0.64,-0.12], 0.08, 0.065, pants);   // lår
-        limb(P, [e*0.11,-0.64,-0.12], [e*0.11,-0.9,-0.28], 0.06, 0.048, pants);  // legg
-        ell(P, 0.055, 0.04, 0.1, shoe, e*0.11, -0.94, -0.33);
-      });
+    function poly(p, m, uvs){
+      var pos = [], uv = [], s = uvs || 2;
+      for(var i=1;i<p.length-1;i++){ [p[0], p[i], p[i+1]].forEach(function(q){ pos.push(q[0], q[1], q[2]); uv.push(q[0]*s, q[2]*s); }); }
+      var geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+      var me = new T.Mesh(geo, m); g.add(me); return me;
+    }
+    function beam(a, b, w, c, wd){
+      var A = new T.Vector3(a[0],a[1],a[2]), B = new T.Vector3(b[0],b[1],b[2]), m = new T.Mesh(new T.BoxGeometry(wd||w, w, A.distanceTo(B)), mat(c));
+      m.position.copy(A).add(B).multiplyScalar(.5); m.lookAt(B); g.add(m); return m;
+    }
+    function cyl(r1, r2, h, c, x, y, z, rot){ var m = new T.Mesh(new T.CylinderGeometry(r1, r2, h, 18), mat(c)); m.position.set(x, y, z); if(rot) m.rotation.set(rot[0]||0, rot[1]||0, rot[2]||0); g.add(m); return m; }
+    function limb(a, b, r1, r2, c){
+      var A = new T.Vector3(a[0],a[1],a[2]), B = new T.Vector3(b[0],b[1],b[2]), L = A.distanceTo(B), mm = mat(c);
+      var m = new T.Mesh(new T.CylinderGeometry(r2, r1, L, 18), mm); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), B.clone().sub(A).normalize()); g.add(m);
+      [[A,r1],[B,r2]].forEach(function(e){ var s = new T.Mesh(new T.SphereGeometry(e[1], 18, 14), mm); s.position.copy(e[0]); g.add(s); });
+    }
 
+    var FY = -1.15, WY = -0.10, ZK = 1.15, HX = 1.05;
+    var wallC = 0x2a3038, trimC = 0x1b2025, roofC = 0x222830;
+    var B = [[-HX,0.35],[-HX,-0.55],[-0.62,-0.74],[0,-0.78],[0.62,-0.74],[HX,-0.55],[HX,0.35]];
+    var Tp = [[-1.0,0.25],[-1.0,-0.2],[-0.58,-0.38],[0,-0.40],[0.58,-0.38],[1.0,-0.2],[1.0,0.25]], TY = 0.52;
+    var wallM = mat(wallC, {side:T.DoubleSide}), trimM = mat(trimC, {side:T.DoubleSide}), roofM = mat(roofC, {side:T.DoubleSide});
+
+    // Gulv
+    poly([[B[0][0],FY,B[0][1]],[B[1][0],FY,B[1][1]],[B[2][0],FY,B[2][1]],[B[3][0],FY,B[3][1]],[B[4][0],FY,B[4][1]],[B[5][0],FY,B[5][1]],[B[6][0],FY,B[6][1]],[HX,FY,ZK],[-HX,FY,ZK]], new T.MeshLambertMaterial({map:noiseTex('#33373c', 70, 1), side:T.DoubleSide}), 3);
+    // Nesepartiet under frontrutene
+    for(var i=0;i<6;i++) quad([[B[i][0],FY,B[i][1]],[B[i+1][0],FY,B[i+1][1]],[B[i+1][0],WY,B[i+1][1]],[B[i][0],WY,B[i][1]]], i%2 ? trimM : wallM);
+    // Sidevegger bak vinduet og bakvegg
+    [-1,1].forEach(function(e){ quad([[e*HX,FY,0.35],[e*HX,FY,ZK],[e*HX,0.62,ZK],[e*HX,TY,0.3]], wallM); });
+    poly([[-HX,FY,ZK],[HX,FY,ZK],[HX,0.62,ZK],[0.6,0.86,ZK],[-0.6,0.86,ZK],[-HX,0.62,ZK]], wallM);
+    // Tak
+    quad([[-0.6,0.64,-0.40],[0.6,0.64,-0.40],[0.6,0.86,ZK],[-0.6,0.86,ZK]], roofM);
+    [-1,1].forEach(function(e){ poly([[e*1.0,TY,-0.2],[e*0.6,0.64,-0.4],[e*0.6,0.86,ZK],[e*HX,0.62,ZK],[e*HX,TY,0.3]], roofM); });
+    for(i=1;i<5;i++) quad([[Tp[i][0],TY,Tp[i][1]],[Tp[i+1][0],TY,Tp[i+1][1]],[Tp[i+1][0]*1.02,0.64,Tp[i+1][1]],[Tp[i][0]*1.02,0.64,Tp[i][1]]], trimM);
+    // Rutestolper og rammer
+    var pw = [0.04,0.05,0.07,0.08,0.07,0.05,0.04];
+    for(i=0;i<7;i++) beam([B[i][0],WY,B[i][1]], [Tp[i][0],TY,Tp[i][1]], pw[i], 0x131619);
+    for(i=0;i<6;i++){ beam([B[i][0],WY,B[i][1]], [B[i+1][0],WY,B[i+1][1]], 0.05, 0x131619); beam([Tp[i][0],TY,Tp[i][1]], [Tp[i+1][0],TY,Tp[i+1][1]], 0.05, 0x131619); }
+    // Glass med svak refleksjon
+    var glT = ptex(256, 256, function(c, w, h){ var g1 = c.createLinearGradient(0, 0, w, h); g1.addColorStop(0, 'rgba(255,255,255,0)'); g1.addColorStop(.4, 'rgba(255,255,255,0.10)'); g1.addColorStop(.55, 'rgba(255,255,255,0)'); g1.addColorStop(.8, 'rgba(255,255,255,0.05)'); g1.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g1; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(20,50,45,0.07)'; c.fillRect(0, 0, w, h); });
+    for(i=0;i<6;i++) quad([[B[i][0],WY,B[i][1]],[B[i+1][0],WY,B[i+1][1]],[Tp[i+1][0],TY,Tp[i+1][1]],[Tp[i][0],TY,Tp[i][1]]], bas(glT, {transparent:true, depthWrite:false}));
+    // Visker
+    [-1,1].forEach(function(e){ beam([e*0.12,-0.08,-0.76], [e*0.50,0.38,-0.5], 0.012, 0x0a0b0d); beam([e*0.2,-0.08,-0.75], [e*0.55,0.32,-0.5], 0.01, 0x0a0b0d); });
+
+    // Glareshield
+    var gsM = new T.MeshLambertMaterial({map:noiseTex('#1f2429', 40, 3), side:T.DoubleSide});
+    poly([[-0.98,WY,-0.56],[0.98,WY,-0.56],[HX,WY,-0.55],[0.62,WY,-0.74],[0,WY,-0.78],[-0.62,WY,-0.74],[-HX,WY,-0.55]], gsM, 2);
+    var fcuT = mkTex(512, 64); scr.fcu = fcuT;
+    quad([[-0.40,WY+0.003,-0.60],[0.40,WY+0.003,-0.60],[0.40,WY+0.003,-0.70],[-0.40,WY+0.003,-0.70]], bas(fcuT.tex));
+    [-0.3,-0.12,0.12,0.3].forEach(function(x){ cyl(0.016, 0.017, 0.012, 0xe4dfd0, x, WY+0.008, -0.62); cyl(0.021, 0.021, 0.005, 0xc9a64a, x, WY+0.004, -0.62); });
+    [-0.66,0.66].forEach(function(x){ rbox(0.26, 0.012, 0.11, 0.004, 0x1a1e23, x, WY+0.004, -0.65); [-0.08,0,0.08].forEach(function(dx){ cyl(0.014, 0.015, 0.012, 0xe4dfd0, x+dx, WY+0.012, -0.63); cyl(0.019, 0.019, 0.005, 0xc9a64a, x+dx, WY+0.007, -0.63); }); for(var k=0;k<6;k++) rbox(0.022, 0.006, 0.014, 0.002, k%2?0x59d86e:0xe7e7e7, x-0.1+k*0.04, WY+0.008, -0.69); });
+
+    // Instrumentpanel
+    function zf(y){ return -0.56 + (WY - y)*0.1154; }
+    var fasT = ptex(512, 256, function(c, w, h){ c.fillStyle = '#242a30'; c.fillRect(0, 0, w, h); for(var i=0;i<1800;i++){ c.fillStyle = 'rgba(255,255,255,' + (Math.random()*0.05).toFixed(3) + ')'; c.fillRect(Math.random()*w, Math.random()*h, 2, 2); } c.strokeStyle = '#3d454d'; c.lineWidth = 2; c.strokeRect(2, 2, w-4, h-4); });
+    quad([[-0.98,-0.62,-0.50],[0.98,-0.62,-0.50],[0.98,WY,-0.56],[-0.98,WY,-0.56]], bas(fasT));
+    quad([[-0.98,FY,-0.50],[0.98,FY,-0.50],[0.98,-0.62,-0.50],[-0.98,-0.62,-0.50]], trimM);
+    quad([[-0.98,FY,-0.50],[-0.98,-0.62,-0.50],[-HX,-0.5,-0.2],[-HX,FY,-0.2]], trimM); quad([[0.98,FY,-0.50],[0.98,-0.62,-0.50],[HX,-0.5,-0.2],[HX,FY,-0.2]], trimM);
+    function screen(key, w, h, x, y, tw, th){
+      var t = mkTex(tw, th); scr[key] = t; var z = zf(y) + 0.02;
+      rbox(w+0.02, h+0.02, 0.02, 0.006, 0x0b0d10, x, y, zf(y)-0.001, [-0.114,0,0]);
+      var m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({map:t.tex})); m.position.set(x, y, z); m.rotation.x = -0.114; g.add(m);
     }
-    pilot(-0.6, 4, B7, 0xd9a98a, 0x3b2a1b, B7); pilot(0.6, 3, false, 0xc48a68, B7 ? 0x6b6b6b : 0x4a3524, false);
-    realism(g, T, X, ZF, ZB, Y0, Y1, scr); a320(g, T, X, ZF, ZB, Y0, Y1, B7);
-    g.add(new T.HemisphereLight(0xeef3fa, 0x3a342e, 0.85));
-    var dl = new T.DirectionalLight(0xfff0d8, 0.95); dl.position.set(-0.9, 1.3, -3.2); dl.target.position.set(0, -0.3, 0.2); g.add(dl); g.add(dl.target);
-    dl.castShadow = true; dl.shadow.mapSize.set(1024, 1024); dl.shadow.bias = -0.002; var sc = dl.shadow.camera; sc.left = -1.8; sc.right = 1.8; sc.top = 1.8; sc.bottom = -1.8; sc.near = 0.5; sc.far = 8;
-    var gl1 = new T.PointLight(0x6fa8ff, 0.5, 1.6); gl1.position.set(0, -0.1, -0.7); g.add(gl1);          // skjermlys
-    g.traverse(function(m){ if(m.isMesh && m.material && m.material.isMeshLambertMaterial){ m.castShadow = true; m.receiveShadow = true; } });
+    screen('pfdL', 0.2, 0.2, -0.68, -0.25, 256, 256); screen('ndL', 0.2, 0.2, -0.45, -0.25, 256, 256);
+    screen('info', 0.2, 0.165, 0, -0.215, 320, 256); screen('sd', 0.2, 0.165, 0, -0.41, 320, 240);
+    screen('ndR', 0.2, 0.2, 0.45, -0.25, 256, 256); screen('pfdR', 0.2, 0.2, 0.68, -0.25, 256, 256);
+    var bp = ptex(128, 128, function(c, w, h){ c.fillStyle = '#1b2026'; c.fillRect(0, 0, w, h); var cl = ['#4aa3ff','#e8ecef','#e8ecef','#f2a63b','#47ff6a']; for(var r=0;r<7;r++) for(var k=0;k<6;k++){ c.fillStyle = '#0b0e12'; c.fillRect(6+k*20, 6+r*17, 16, 13); c.fillStyle = cl[(r*2+k)%5]; c.fillRect(8+k*20, 8+r*17, 12, 4); c.fillStyle = '#7b8591'; c.fillRect(8+k*20, 14+r*17, 12, 4); } });
+    // ISIS, understell og klokke
+    rbox(0.08, 0.08, 0.02, 0.01, 0x0b0d10, -0.2, -0.2, zf(-0.2)+0.005, [-0.114,0,0]); var isis = new T.Mesh(new T.PlaneGeometry(0.065, 0.065), bas(ptex(64, 64, function(c, w, h){ c.fillStyle = '#6aa8e8'; c.fillRect(0, 0, w, h/2); c.fillStyle = '#7a5a36'; c.fillRect(0, h/2, w, h/2); c.fillStyle = '#fff'; c.fillRect(0, h/2-1, w, 2); }))); isis.position.set(-0.2, -0.2, zf(-0.2)+0.012); isis.rotation.x = -0.114; g.add(isis);
+    rbox(0.1, 0.11, 0.025, 0.008, 0x1c2127, 0.2, -0.22, zf(-0.22)+0.006, [-0.114,0,0]); cyl(0.012, 0.012, 0.05, 0xc7ccd2, 0.2, -0.22, zf(-0.22)+0.04, [Math.PI/2-0.114,0,0]); cyl(0.022, 0.022, 0.012, 0xc23a2e, 0.2, -0.22, zf(-0.22)+0.068, [Math.PI/2-0.114,0,0]);
+    var clk = new T.Mesh(new T.PlaneGeometry(0.1, 0.06), bas(ptex(128, 64, function(c, w, h){ c.fillStyle = '#10161c'; c.fillRect(0, 0, w, h); c.fillStyle = '#47e0ff'; c.font = '700 30px monospace'; c.textAlign = 'center'; c.fillText('12:48', w/2, 44); }))); clk.position.set(0.2, -0.42, zf(-0.42)+0.012); clk.rotation.x = -0.114; g.add(clk);
+    [-0.9, 0.9].forEach(function(x){ var pm = new T.Mesh(new T.PlaneGeometry(0.1, 0.3), bas(bp)); pm.position.set(x, -0.3, zf(-0.3)+0.008); pm.rotation.x = -0.114; g.add(pm); });
+    [-0.68, 0.68].forEach(function(x){ var pm = new T.Mesh(new T.PlaneGeometry(0.2, 0.09), bas(bp)); pm.position.set(x, -0.52, zf(-0.52)+0.008); pm.rotation.x = -0.114; g.add(pm); });
+
+    // Midtpedestal
+    rbox(0.40, 0.53, 0.65, 0.02, 0x2f353c, 0, -0.885, -0.195);
+    var rp = ptex(128, 128, function(c, w, h){ c.fillStyle = '#23282e'; c.fillRect(0, 0, w, h); for(var i=0;i<4;i++){ c.fillStyle = '#050607'; c.fillRect(8, 8+i*30, 112, 22); c.fillStyle = '#47e0ff'; c.font = '700 15px monospace'; c.fillText(['118.250','121.500','7000','TCAS'][i], 14, 25+i*30); } });
+    var mc = ptex(128, 160, function(c, w, h){ c.fillStyle = '#1b2026'; c.fillRect(0, 0, w, h); c.fillStyle = '#04100a'; c.fillRect(8, 8, 112, 58); c.fillStyle = '#47ff6a'; c.font = '700 11px monospace'; for(var i=0;i<5;i++) c.fillText(['ACTIVE/F-PLN','EDDF / LOWI','CRZ FL360','RTE  DIR','──────────'][i], 14, 22+i*10); for(var r=0;r<5;r++) for(var k=0;k<7;k++){ c.fillStyle = '#0b0e12'; c.fillRect(8+k*16, 76+r*16, 13, 12); c.fillStyle = '#9aa3ad'; c.fillRect(10+k*16, 78+r*16, 9, 3); } });
+    [-1,1].forEach(function(e){ quad([[e*0.19,-0.619,-0.04],[e*0.065,-0.619,-0.04],[e*0.065,-0.619,-0.50],[e*0.19,-0.619,-0.50]], bas(mc)); quad([[e*0.19,-0.619,0.12],[e*0.065,-0.619,0.12],[e*0.065,-0.619,-0.04],[e*0.19,-0.619,-0.04]], bas(bp)); });
+    quad([[-0.06,-0.619,-0.3],[0.06,-0.619,-0.3],[0.06,-0.619,-0.5],[-0.06,-0.619,-0.5]], bas(rp));
+    [-0.03,0.03].forEach(function(x){ quad([[x-0.011,-0.618,0.1],[x+0.011,-0.618,0.1],[x+0.011,-0.618,-0.3],[x-0.011,-0.618,-0.3]], new T.MeshBasicMaterial({color:0x030303, side:T.DoubleSide}));
+      beam([x,-0.62,0.02], [x,-0.49,-0.13], 0.015, 0x1a1d22); rbox(0.04, 0.035, 0.075, 0.013, 0x0d0f12, x, -0.475, -0.145, [0.5,0,0]); rbox(0.012, 0.006, 0.02, 0.002, 0xe33, x, -0.455, -0.155, [0.5,0,0]); });
+    [-0.095,0.095].forEach(function(x){ beam([x,-0.62,0.05], [x,-0.55,-0.02], 0.012, 0x2a2f35); ell(0.016,0.016,0.016, 0x1a1d22, x, -0.545, -0.025); });
+    // Pedaler og seteskinner
+    [-0.5,0.5].forEach(function(px){ [-1,1].forEach(function(e){ rbox(0.1, 0.15, 0.025, 0.008, 0x2b3037, px+e*0.1, -0.93, -0.33, [-0.55,0,0]); }); });
+
+    // Sidekonsoller med sidestikk
+    [-1,1].forEach(function(e){
+      var x = e*0.9; rbox(0.22, 0.55, 0.76, 0.03, 0x2c3239, x, -0.875, -0.0);
+      rbox(0.08, 0.035, 0.1, 0.012, 0x1a1d21, x, -0.595, 0.0); beam([x,-0.6,0.0], [x-e*0.012,-0.52,0.01], 0.03, 0x24282d);
+      rbox(0.05, 0.12, 0.065, 0.022, 0x14171a, x-e*0.018, -0.46, 0.01, [0,0,e*0.15]); ell(0.008,0.008,0.008, 0xc02020, x-e*0.035, -0.425, -0.02);
+      cyl(0.03, 0.03, 0.025, 0x1a1d21, x, -0.595, -0.3, null); rbox(0.1, 0.02, 0.36, 0.008, 0x4a5058, x+e*0.0, -0.58, 0.1);
+    });
+    // Overheadpanel
+    var ohT = ptex(1024, 384, function(c, w, h){
+      c.fillStyle = '#1a2129'; c.fillRect(0, 0, w, h);
+      var amb = '#f2a63b', blu = '#4aa3ff', grn = '#47ff6a', wht = '#e8ecef', red = '#e0513f';
+      function panel(x, y, pw, ph, title){ c.fillStyle = '#222b35'; c.fillRect(x, y, pw, ph); c.strokeStyle = '#6a7682'; c.lineWidth = 1.5; c.strokeRect(x+.5, y+.5, pw-1, ph-1); if(title){ c.fillStyle = '#d0d6dc'; c.font = '700 11px sans-serif'; c.textAlign = 'center'; c.fillText(title, x+pw/2, y+14); } }
+      function btns(x, y, nx, ny, cols){ for(var i=0;i<nx;i++) for(var j=0;j<ny;j++){ var cc = cols[(i*3+j*5)%cols.length]; c.fillStyle = '#0b0e12'; c.fillRect(x+i*24, y+j*22, 20, 17); c.fillStyle = cc; c.fillRect(x+i*24+2, y+j*22+2, 16, 5); c.fillStyle = '#6a7480'; c.fillRect(x+i*24+2, y+j*22+9, 16, 6); } }
+      panel(8, 8, 300, 368, 'HYD · ADIRS · FLT CTL · FUEL'); btns(20, 34, 11, 7, [wht, blu, amb, grn, wht, red]); c.fillStyle = '#0b0e12'; c.fillRect(20, 200, 276, 44); c.fillStyle = grn; c.font = '700 16px monospace'; c.fillText('IR1     IR2     IR3', 158, 230); btns(20, 258, 11, 4, [blu, wht, amb, wht]);
+      panel(316, 8, 392, 368, null); c.fillStyle = '#0b0e12'; c.fillRect(326, 18, 372, 30); c.fillStyle = '#e04a3a'; c.font = '700 15px monospace'; c.fillText('ENG 1            APU            ENG 2', 512, 40);
+      c.strokeStyle = grn; c.lineWidth = 2.5; c.beginPath(); c.moveTo(340, 100); c.lineTo(684, 100); c.moveTo(340, 160); c.lineTo(684, 160); c.moveTo(512, 70); c.lineTo(512, 290); c.moveTo(380, 100); c.lineTo(380, 240); c.moveTo(644, 100); c.lineTo(644, 240); c.moveTo(340, 240); c.lineTo(684, 240); c.stroke();
+      c.strokeStyle = wht; c.lineWidth = 1.5; c.beginPath(); c.moveTo(340, 130); c.lineTo(684, 130); c.moveTo(340, 200); c.lineTo(684, 200); c.moveTo(450, 160); c.lineTo(450, 290); c.moveTo(574, 160); c.lineTo(574, 290); c.stroke();
+      [[380,100],[644,100],[380,240],[644,240],[512,160],[450,200],[574,200],[512,240]].forEach(function(q){ c.fillStyle = '#0b0e12'; c.fillRect(q[0]-14, q[1]-11, 28, 22); c.fillStyle = q[0]%2?blu:grn; c.fillRect(q[0]-11, q[1]-8, 22, 6); c.fillStyle = '#7b8591'; c.fillRect(q[0]-11, q[1]-1, 22, 6); });
+      btns(336, 302, 14, 3, [wht, grn, amb]);
+      panel(716, 8, 300, 368, 'AIR COND · ANTI ICE · CABIN · EXT LT'); btns(728, 34, 11, 7, [grn, wht, blu, amb, wht]); c.fillStyle = '#0b0e12'; c.fillRect(728, 200, 276, 44); c.fillStyle = amb; c.font = '700 16px monospace'; c.fillText('CAB PRESS    PACK 1  2', 866, 230); btns(728, 258, 11, 4, [wht, blu, grn, amb]);
+    });
+    function yr(z){ return 0.64 + (z+0.4)/1.55*0.22 - 0.012; }
+    var ohM = bas(ohT);
+    quad([[-0.55,yr(0.33),0.33],[0.55,yr(0.33),0.33],[0.36,yr(-0.37),-0.37],[-0.36,yr(-0.37),-0.37]], ohM, [0.28,0,0.72,0,0.72,1,0.28,1]);
+    quad([[-0.92,yr(0.3)-0.07,0.3],[-0.55,yr(0.33),0.33],[-0.36,yr(-0.37),-0.37],[-0.6,yr(-0.3)-0.07,-0.3]], ohM, [0,0,0.28,0,0.28,1,0,1]);
+    quad([[0.55,yr(0.33),0.33],[0.92,yr(0.3)-0.07,0.3],[0.6,yr(-0.3)-0.07,-0.3],[0.36,yr(-0.37),-0.37]], ohM, [0.72,0,1,0,1,1,0.72,1]);
+    for(i=0;i<9;i++){ var kx = -0.6+i*0.15, kz = 0.1 - (i%3)*0.2; cyl(0.017, 0.02, 0.03, 0xeceff2, kx*0.8, yr(kz)-0.025, kz); cyl(0.022, 0.022, 0.006, 0xc9a64a, kx*0.8, yr(kz)-0.012, kz); }
+    quad([[-0.1,0.85,0.7],[0.1,0.85,0.7],[0.1,0.85,0.55],[-0.1,0.85,0.55]], new T.MeshBasicMaterial({color:0xfff3d6, side:T.DoubleSide}));
+    // Bakdør
+    var drT = ptex(256, 512, function(c, w, h){ c.fillStyle = '#2a3038'; c.fillRect(0, 0, w, h); c.fillStyle = '#0d0f12'; c.fillRect(80, 50, 96, 110); c.fillStyle = '#1d2630'; c.fillRect(86, 56, 84, 98); c.fillStyle = '#7d868f'; c.fillRect(190, 250, 26, 8); c.strokeStyle = '#4b535e'; c.strokeRect(20.5, 20.5, 215, 470); });
+    quad([[-0.4,-1.1,ZK-0.01],[0.4,-1.1,ZK-0.01],[0.4,0.35,ZK-0.01],[-0.4,0.35,ZK-0.01]], bas(drT));
+    // Sikringspaneler bak
+    var cbT = ptex(256, 256, function(c, w, h){ c.fillStyle = '#14171b'; c.fillRect(0, 0, w, h); for(var r=0;r<12;r++) for(var k=0;k<12;k++){ c.fillStyle = '#050607'; c.fillRect(8+k*20, 8+r*20, 14, 14); c.fillStyle = Math.random()<.08 ? '#a07f1e' : '#8a9097'; c.beginPath(); c.arc(15+k*20, 15+r*20, 4.5, 0, 7); c.fill(); } });
+    [-1,1].forEach(function(e){ quad([[e*(HX-0.005),0.0,0.55],[e*(HX-0.005),0.0,1.05],[e*(HX-0.005),0.42,1.05],[e*(HX-0.005),0.42,0.55]], bas(cbT)); });
+
+    // Seter (blå nakkestøtter, marineblå rygg, rød LIFE VEST)
+    [-0.5, 0.5].forEach(function(px){
+      rbox(0.48, 0.1, 0.52, 0.045, 0x1b2a45, px, -0.78, 0.36);
+      rbox(0.5, 0.54, 0.13, 0.06, 0x1b2a45, px, -0.45, 0.62, [0.1,0,0]);
+      [-1,1].forEach(function(e){ rbox(0.08, 0.5, 0.15, 0.035, 0x4f8fd0, px+e*0.27, -0.45, 0.58, [0.1,0,0]); rbox(0.05, 0.04, 0.34, 0.02, 0x3d7fa8, px+e*0.29, -0.62, 0.34); });
+      rbox(0.36, 0.22, 0.1, 0.07, 0x5a9ad6, px, -0.08, 0.62, [0.08,0,0]);
+      rbox(0.12, 0.05, 0.02, 0.01, 0xd9362c, px, -0.43, 0.7, [0.1,0,0]); rbox(0.2, 0.07, 0.02, 0.012, 0x24324f, px, -0.55, 0.705, [0.1,0,0]);
+      rbox(0.04, 0.06, 0.4, 0.015, 0x14171a, px+0.0, -0.85, 0.34);
+    });
+    // Piloter
+    function arm(S, H, out, shirtC, skin){
+      var a = 0.3, b = 0.29, v = new T.Vector3(H[0]-S[0], H[1]-S[1], H[2]-S[2]), d = Math.min(v.length(), a+b-0.005), u = v.clone().normalize();
+      var l = (a*a - b*b + d*d)/(2*d), hh = Math.sqrt(Math.max(a*a - l*l, 0)), pole = new T.Vector3(out*0.5, -1, 0.25); pole.sub(u.clone().multiplyScalar(pole.dot(u))).normalize();
+      var E = new T.Vector3(S[0],S[1],S[2]).add(u.clone().multiplyScalar(l)).add(pole.multiplyScalar(hh));
+      limb(S, [E.x,E.y,E.z], 0.055, 0.047, shirtC); limb([E.x,E.y,E.z], H, 0.046, 0.036, shirtC);
+      ell(0.032, 0.025, 0.05, skin, H[0], H[1]-0.012, H[2]-0.04);
+    }
+    function pilot(px, skin, hairC, stripes){
+      var shirt = 0xf3f5f8, pants = 0x1c2330, shoe = 0x0b0b0d;
+      var prof = [[0.01,-0.67],[0.15,-0.65],[0.165,-0.52],[0.15,-0.4],[0.17,-0.3],[0.19,-0.21],[0.17,-0.15],[0.09,-0.12],[0.05,-0.105],[0.01,-0.1]].map(function(q){ return new T.Vector2(q[0], q[1]); });
+      var torso = new T.Mesh(new T.LatheGeometry(prof, 32), mat(shirt)); torso.scale.set(1.3, 1, 0.72); torso.position.set(px, 0, 0.37); torso.rotation.x = 0.06; g.add(torso);
+      [-1,1].forEach(function(e){ ell(0.07, 0.06, 0.075, shirt, px+e*0.245, -0.19, 0.37); });
+      ell(0.2, 0.1, 0.15, pants, px, -0.69, 0.34);
+      [-1,1].forEach(function(e){ limb([px+e*0.1,-0.7,0.34], [px+e*0.11,-0.7,-0.05], 0.078, 0.062, pants); limb([px+e*0.11,-0.7,-0.05], [px+e*0.11,-1.0,-0.15], 0.058, 0.042, pants); ell(0.055, 0.04, 0.11, shoe, px+e*0.11, -1.03, -0.2); });
+      cyl(0.05, 0.055, 0.1, skin, px, -0.07, 0.38);
+      var col = new T.Mesh(new T.TorusGeometry(0.062, 0.015, 10, 24), mat(shirt)); col.rotation.x = Math.PI/2; col.position.set(px, -0.105, 0.38); g.add(col);
+      // Hode
+      var hd = new T.Group(); hd.position.set(px, 0.045, 0.37); g.add(hd); heads.push(hd);
+      ell(0.086, 0.108, 0.1, skin, 0, 0, 0, hd);
+      var hm = mat(hairC);
+      function hair(th0, th1, ph0, ph1, s){ var geo = new T.SphereGeometry(1, 36, 22, ph0, ph1, th0, th1), p = geo.attributes.position; for(var i=0;i<p.count;i++){ var x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + 0.016*Math.sin(x*37+y*23) * Math.cos(z*29+x*17) + 0.008*Math.sin(y*61); p.setXYZ(i, x*k, y*k, z*k); } geo.computeVertexNormals(); var m = new T.Mesh(geo, hm); m.scale.set(0.09*s, 0.114*s, 0.105*s); m.position.set(0, 0.006, 0.012); hd.add(m); }
+      hair(0, Math.PI*0.5, 0, Math.PI*2, 1); hair(Math.PI*0.5, Math.PI*0.3, 0, Math.PI, 1);
+      [-1,1].forEach(function(e){ ell(0.016, 0.03, 0.02, skin, e*0.088, -0.005, -0.005, hd); var cup = new T.Mesh(new T.CylinderGeometry(0.04, 0.04, 0.03, 20), mat(0x14171b)); cup.rotation.z = Math.PI/2; cup.position.set(e*0.104, -0.004, -0.004); hd.add(cup); });
+      var band = new T.Mesh(new T.TorusGeometry(0.108, 0.007, 10, 28, Math.PI), mat(0x14171b)); band.position.set(0, 0, 0.004); hd.add(band);
+      // Skulderbrett med striper
+      [-1,1].forEach(function(e){ var ep = rbox(0.11, 0.012, 0.07, 0.005, 0x141a2e, px+e*0.2, -0.108, 0.37, [0,0,-e*0.28]); for(var k=0;k<stripes;k++) rbox(0.11, 0.004, 0.007, 0.0015, 0xd8b04a, px+e*0.2, -0.1, 0.345+k*0.014, [0,0,-e*0.28]); });
+      // Armer: indre hånd på gasshendlene, ytre på sidestikken
+      var inn = px < 0 ? 1 : -1;
+      arm([px+inn*0.25,-0.19,0.37], [(px<0?-0.03:0.03),-0.45,-0.12], inn, shirt, skin);
+      arm([px-inn*0.25,-0.19,0.37], [px<0?-0.9:0.9, -0.42, 0.04], -inn, shirt, skin);
+    }
+    pilot(-0.5, 0xd9a98a, 0x3a281a, 4); pilot(0.5, 0xc48a68, 0x4a3524, 3);
+
+    // Lys
+    g.add(new T.HemisphereLight(0xdde6f2, 0x2a2622, 0.62));
+    var sun = new T.DirectionalLight(0xfff0d8, 0.85); sun.position.set(-1.0, 1.4, -3.0); sun.target.position.set(0, -0.3, 0.3); g.add(sun); g.add(sun.target);
+    sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.002; var sc = sun.shadow.camera; sc.left = -1.8; sc.right = 1.8; sc.top = 1.8; sc.bottom = -1.8; sc.near = 0.5; sc.far = 8;
+    var gl1 = new T.PointLight(0x6fa8ff, 0.7, 1.7); gl1.position.set(0, -0.2, -0.2); g.add(gl1);
+    var gl2 = new T.PointLight(0xffe2b0, 0.45, 2.2); gl2.position.set(0, 0.55, 0.3); g.add(gl2);
+    g.traverse(function(m){ if(m.isMesh && m.material && m.material.isMeshLambertMaterial){ m.receiveShadow = true; m.castShadow = true; } });
     return {group:g, scr:scr, heads:heads};
   }
+
 
   function panInit(){
     var T = THREE, cv = $('#c3d');
@@ -1917,11 +1867,10 @@
     pan.scene = new T.Scene();
     pan.cam = new T.PerspectiveCamera(70, 1.5, 0.03, 20); pan.cam.rotation.order = 'YXZ';
     var b = panBuild(); pan.scene.add(b.group); pan.scr = b.scr; pan.heads = b.heads;
-    pan.group = b.group; pan.ready = true; $('#cstyle').textContent = 'Cockpit: ' + (cockStyle === '747' ? '747' : 'A320');
+    pan.group = b.group; pan.ready = true;
   }
   function panRebuild(){
     pan.scene.remove(pan.group); var b = panBuild(); pan.scene.add(b.group); pan.group = b.group; pan.scr = b.scr; pan.heads = b.heads; pan.lastScr = 0;
-    $('#cstyle').textContent = 'Cockpit: ' + (cockStyle === '747' ? '747' : 'A320');
   }
 
   // Lite kart: viser hvor i verden flyet er
