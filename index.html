@@ -112,7 +112,7 @@
   .skc .ph img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover}
   .skc .ph small{position:absolute;left:8px;bottom:6px;color:#fff;font:500 13px var(--ui);text-shadow:0 0 3px #000,0 0 3px #000}
   #skytop{position:absolute;z-index:5;left:0;right:0;top:0;padding:calc(12px + env(safe-area-inset-top)) 12px 30px;display:flex;align-items:center;justify-content:center;background:linear-gradient(rgba(0,0,0,.5),transparent);pointer-events:none}
-  #skyclose{position:absolute;left:6px;top:calc(8px + env(safe-area-inset-top));width:48px;height:48px;min-height:0;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;pointer-events:auto;color:#fff;filter:drop-shadow(0 0 3px rgba(0,0,0,.7))}
+  #skyclose{position:absolute;left:6px;top:calc(8px + env(safe-area-inset-top));width:40px;height:40px;min-height:0;padding:0;border:0;background:none;display:flex;align-items:center;justify-content:center;pointer-events:auto;color:#fff;filter:drop-shadow(0 0 3px rgba(0,0,0,.7))}
   #skytop .brand{display:flex;align-items:center;gap:8px;color:#fff;filter:drop-shadow(0 0 4px rgba(0,0,0,.6))}
   #skytop .brand img{width:34px;height:34px}
   #skytop .brand span{font:700 clamp(26px,8vw,38px)/1 var(--cond);letter-spacing:.01em}
@@ -123,16 +123,16 @@
   #skylbl{color:#fff;font:700 clamp(20px,6vw,28px)/1.15 var(--ui);text-align:center;text-shadow:0 0 4px #000,0 0 8px rgba(0,0,0,.6);min-height:2.3em}
   #skymmc{width:min(36vw,190px);aspect-ratio:1;border-radius:50%;padding:6px;background:rgba(255,255,255,.3);box-sizing:border-box;box-shadow:0 2px 10px rgba(0,0,0,.4)}
   #skymm{display:block;width:100%;height:100%;border-radius:50%}
-  #skyrng{position:absolute;z-index:5;right:6px;bottom:calc(100px + env(safe-area-inset-bottom));width:44px;height:min(30vh,260px);--f:1;touch-action:none;cursor:pointer}
-  #skyrng::before{content:"";position:absolute;left:9px;right:9px;top:0;bottom:0;border-radius:14px;background:rgba(255,255,255,.14)}
-  #skyrng i{position:absolute;left:9px;right:9px;bottom:0;height:calc(var(--f) * 100%);min-height:10px;border-radius:14px;background:var(--yl);box-shadow:0 1px 6px rgba(0,0,0,.4)}
-  #skyrng u{position:absolute;left:0;right:0;bottom:calc(var(--f) * 100% + 8px);height:6px;border-radius:3px;background:var(--yl);text-decoration:none}
-  #skymode{position:absolute;z-index:5;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;padding:3px;background:rgba(120,120,125,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:999px}
-  #skymode button{border:0;background:none;color:rgba(255,255,255,.82);font:500 clamp(15px,4.6vw,20px) var(--ui);padding:10px clamp(16px,6vw,28px);min-height:0;border-radius:999px}
+  #skyrng{position:absolute;z-index:5;right:10px;bottom:calc(92px + env(safe-area-inset-bottom));width:32px;height:min(30vh,260px);--f:1;touch-action:none;cursor:pointer}
+  #skyrng::before{content:"";position:absolute;left:12px;right:12px;top:0;bottom:0;border-radius:6px;background:rgba(255,255,255,.14)}
+  #skyrng i{position:absolute;left:12px;right:12px;bottom:0;height:calc(var(--f) * 100%);min-height:8px;border-radius:6px;background:var(--yl);box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  #skyrng u{position:absolute;left:6px;right:6px;bottom:calc(var(--f) * 100% + 6px);height:3px;border-radius:2px;background:var(--yl);text-decoration:none}
+  #skymode{position:absolute;z-index:5;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;padding:2px;background:rgba(120,120,125,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:999px}
+  #skymode button{border:0;background:none;color:rgba(255,255,255,.82);font:500 clamp(13px,3.8vw,16px) var(--ui);padding:6px clamp(12px,4.5vw,20px);min-height:0;border-radius:999px}
   #skymode button.on{background:#d9a514;color:#fff}
-  #skypause{position:absolute;z-index:5;right:12px;bottom:calc(14px + env(safe-area-inset-bottom));width:56px;height:56px;min-height:0;padding:0;border-radius:50%;border:3px solid #fff;background:rgba(0,0,0,.15);color:#fff;display:flex;align-items:center;justify-content:center}
-  #skyadj{position:absolute;z-index:5;left:10px;bottom:calc(82px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:2px;padding:2px 4px;background:rgba(10,16,23,.55);border-radius:18px;font-size:11px;color:#dfe8ef}
-  #skyadj button{padding:2px 8px;min-height:30px;background:none;border:0;color:#fff}
+  #skypause{position:absolute;z-index:5;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));width:42px;height:42px;min-height:0;padding:0;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.15);color:#fff;display:flex;align-items:center;justify-content:center}
+  #skyadj{position:absolute;z-index:5;left:10px;bottom:calc(66px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:0;padding:0 2px;background:rgba(10,16,23,.55);border-radius:18px;font-size:11px;color:#dfe8ef}
+  #skyadj button{padding:0 7px;min-height:24px;font-size:10px;background:none;border:0;color:#fff}
   #cmap{position:absolute;inset:0}
   #cmap canvas{outline:none}
   #cpit{position:absolute;left:0;top:0;pointer-events:none}
@@ -2812,8 +2812,8 @@
   var skySel = null, skyHits = [], skyHdg = 0, skyElv = 0;
   var skyOn = false, skyStream = null, skyWatch = null, skyRaf = 0, skyObs = null, skyOri = null, skyOff = 0, skyCtx = null, skyLast = 0, skyT0 = 0;
   var skyPaused = false, skyMode = 'det', skyRange = 220, skyCards = new Map(), skyLblSig = '', skyTiles = new Map(), skyMmCtx = null, skyMmS = 0, skyLastVis = null, skyRngDrag = false, PLANE_P2D = null;
-  var SKY_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><rect x="5" y="3" width="4" height="18" rx="1"/><rect x="15" y="3" width="4" height="18" rx="1"/></svg>';
-  var SKY_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M7 4l13 8-13 8z"/></svg>';
+  var SKY_PAUSE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><rect x="5" y="3" width="4" height="18" rx="1"/><rect x="15" y="3" width="4" height="18" rx="1"/></svg>';
+  var SKY_PLAY = '<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M7 4l13 8-13 8z"/></svg>';
   function neg(v){ return [-v[0], -v[1], -v[2]]; }
   function dot3(a, b){ return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
 
