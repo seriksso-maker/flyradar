@@ -151,6 +151,14 @@
   .pmk{font-size:22px;line-height:22px;text-align:center;color:#ffcf3a;text-shadow:0 0 3px #000,0 0 6px #000}
   #cpan button{min-height:34px;padding:4px 10px;font-size:12px;background:rgba(10,16,23,.8);white-space:nowrap}
   #cpan button.on{border-color:var(--amber);color:var(--amber)}
+  #csim{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #csimb{position:absolute;z-index:6;top:10px;left:116px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
+  #csimhud{position:absolute;z-index:6;top:12px;left:50%;transform:translateX(-50%);max-width:46vw;padding:5px 12px;border-radius:12px;background:rgba(10,16,23,.7);color:#e8f1f8;font:600 12px var(--ui);text-align:center;pointer-events:none;line-height:1.35}
+  #csimhud small{display:block;font-weight:400;color:#9fb0c0;font-size:10.5px}
+  #csimv{position:absolute;z-index:6;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;max-width:96vw;overflow-x:auto}
+  #csimv[hidden],#csimhud[hidden]{display:none}
+  #csimv button{min-height:34px;padding:4px 12px;font-size:12px;background:rgba(10,16,23,.8);white-space:nowrap}
+  #csimv button.on{border-color:var(--amber);color:var(--amber)}
   #cpil{position:absolute;z-index:6;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
   #air{min-width:190px;max-width:100%}
   #air.on{border-color:var(--amber);color:var(--amber)}
@@ -391,11 +399,15 @@
   <div id="cmap"></div>
   <canvas id="cpit"></canvas>
   <canvas id="c3d" hidden></canvas>
+  <canvas id="csim" hidden></canvas>
   <div class="cattr">Bilder © Esri World Imagery · Terreng: AWS/Mapzen · MapLibre</div>
   <div id="cmsg" class="cmsg" hidden></div>
   <div id="chint" hidden>Snu mobilen til liggende for best utsikt</div>
   <button id="cclose" type="button">Tilbake til kart</button>
   <button id="cpil" type="button">Se deg rundt</button>
+  <button id="csimb" type="button">3D-flyging</button>
+  <div id="csimhud" hidden></div>
+  <div id="csimv" hidden><button data-v="back">Bak</button><button data-v="side">Side</button><button data-v="front">Foran</button><button data-v="top">Over</button><button data-v="orbit">Bane</button></div>
   <div id="pmini" hidden><div id="pmap"></div><div id="pcap"></div></div>
   <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
 </div>
@@ -1002,7 +1014,7 @@
       if(!p){ p = {trail:[]}; planes.set(a.hex, p); }
       p.d = a; p.seen = now; p.t0 = now; p.lat0 = a.lat; p.lon0 = a.lon;
       var last = p.trail[p.trail.length-1];
-      if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon]); if(p.trail.length>80) p.trail.shift(); }
+      if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon,a.alt]); if(p.trail.length>80) p.trail.shift(); }
       p.hold = holdCalc(p);
       draw(a.hex);
     });
@@ -1373,12 +1385,14 @@
       })()
       + '<div class="acts"><button id="bRoute" type="button" class="'+(showRoute?'on':'')+'">Rute</button>'
       + '<button id="bCock" type="button">Cockpit</button>'
+      + '<button id="bSim" type="button">3D</button>'
       + '<button id="bMore" type="button" class="'+(more?'on':'')+'">Mer info</button>'
       + '<button id="bFollow" type="button" class="'+(follow?'on':'')+'">Følg</button></div>';
 
     $('#close').onclick = function(){ select(null); };
     $('#bRoute').onclick = function(){ showRoute = !showRoute; renderPanel(); };
     $('#bCock').onclick = openCockpit;
+    $('#bSim').onclick = openSim;
     $('#bMore').onclick = function(){ more = !more; renderPanel(); };
     $('#bFollow').onclick = function(){
       follow = !follow;
@@ -1422,7 +1436,7 @@
   map.on('click', function(){ if(sel) select(null); });
 
   /* ---------- Cockpit-visning: 3D-terreng sett fra flyet + tegnet cockpit ---------- */
-  var cockStyle = (function(){ try{ return localStorage.getItem('flyradar_cstyle2') === '747' ? '747' : '320'; }catch(e){ return '320'; } })(), pan = {on:false}, cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
+  var cockStyle = (function(){ try{ return localStorage.getItem('flyradar_cstyle2') === '747' ? '747' : '320'; }catch(e){ return '320'; } })(), pan = {on:false}, sim = {on:false, az:180, el:10, dist:110, fov:50}, cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
   var ML_URL = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl';
 
   function loadMapLibre(){
@@ -1489,7 +1503,8 @@
     cv.style.width = cL.W+'px'; cv.style.height = cL.H+'px';
     cctx = cv.getContext('2d'); cctx.setTransform(dpr,0,0,dpr,0,0);
     if(pan.on) panResize();
-    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(pan.on ? pan.fov : cL.vfov); cmap.triggerRepaint(); }catch(e){} }
+    if(sim.on) simResize();
+    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(sim.on ? sim.fov : pan.on ? pan.fov : cL.vfov); cmap.triggerRepaint(); }catch(e){} }
     cs && (cs.bg = null);
   }
 
@@ -1500,7 +1515,7 @@
     try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
     try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function(){}); }catch(e){}
     var d = p.d;
-    $('#cpil').textContent = 'Se deg rundt'; if(pan.on) panOff();
+    $('#cpil').textContent = 'Se deg rundt'; if(pan.on) panOff(); if(sim.on) simOff(true);
     cs = {hdg:d.trk||0, roll:0, pitch:attitude(d).pitch, spd:d.ias!=null?d.ias:(d.gs||0), alt:d.alt||0, vs:d.vr||0, prevHdg:d.trk||0, bg:null};
     var msg = $('#cmsg'); msg.textContent = 'Laster 3D-kart …'; msg.hidden = false;
     cResize();
@@ -1538,16 +1553,214 @@
   }
 
   function closeCockpit(){
+    if(sim.on) simOff(true);
     cockOn = false;
     cancelAnimationFrame(cockRaf);
     var c = $('#cock'); if(c) c.hidden = true;
     try{ if(document.fullscreenElement) document.exitFullscreen(); screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); }catch(e){}
   }
 
+  /* ----- 3D-flyging: følg flyet utenfra over terrenget, med fløyet spor og simulert rute foran ----- */
+  var SIM_VIEWS = {back:{az:180, el:10, dist:110}, side:{az:90, el:6, dist:110}, front:{az:0, el:8, dist:130}, top:{az:180, el:80, dist:170}, orbit:{az:180, el:14, dist:130}};
+  function simResize(){
+    if(!sim.r || !cL) return;
+    sim.r.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5)); sim.r.setSize(cL.W, cL.H, false);
+    sim.cam3.aspect = cL.W/cL.H; sim.cam3.fov = sim.fov; sim.cam3.updateProjectionMatrix();
+  }
+  function simBuildPlane(heli, tailCol){
+    var T = THREE, g = new T.Group();
+    var white = new T.MeshStandardMaterial({color:0xf2f5f8, roughness:.45, metalness:.1, side:T.DoubleSide});
+    var grey = new T.MeshStandardMaterial({color:0x9aa5b1, roughness:.5, metalness:.3, side:T.DoubleSide});
+    var tail = new T.MeshStandardMaterial({color:tailCol, roughness:.5, metalness:.1, side:T.DoubleSide});
+    var dark = new T.MeshStandardMaterial({color:0x0d1117, roughness:.2, metalness:.5});
+    function add(geo, mat, x, y, z){ var m = new T.Mesh(geo, mat); m.position.set(x||0, y||0, z||0); g.add(m); return m; }
+    if(heli){
+      var b = add(new T.SphereGeometry(1, 24, 16), tail, 0, 0, 0); b.scale.set(1.3, 1.3, 2.7);
+      var gl = add(new T.SphereGeometry(1, 18, 12), dark, 0, 0.25, -2.0); gl.scale.set(1.0, 0.95, 1.2);
+      var bm = add(new T.CylinderGeometry(.22, .45, 6.2, 12), tail, 0, .4, 5.2); bm.rotation.x = Math.PI/2;
+      var fn = add(new T.BoxGeometry(.12, 1.6, 1.1), tail, 0, 1.0, 8.2);
+      var mast = add(new T.CylinderGeometry(.14, .14, .9, 8), grey, 0, 1.5, 0);
+      var rot = new T.Group(); rot.position.set(0, 2.0, 0); g.add(rot);
+      var bl = new T.BoxGeometry(11, .05, .35); var r1 = new T.Mesh(bl, dark), r2 = new T.Mesh(bl, dark); r2.rotation.y = Math.PI/2; rot.add(r1); rot.add(r2);
+      var tr = new T.Group(); tr.position.set(.3, 1.0, 8.4); g.add(tr); var t1 = new T.Mesh(new T.BoxGeometry(.05, 2.0, .15), dark); tr.add(t1);
+      [-1,1].forEach(function(e){ var sk = add(new T.CylinderGeometry(.06, .06, 4.2, 8), grey, e*1.1, -1.5, 0); sk.rotation.x = Math.PI/2; });
+      g.userData.rot = rot; g.userData.trot = tr; g.userData.len = 14;
+      return g;
+    }
+    var pr = [[-18.6,0],[-18,.7],[-16.8,1.35],[-14.5,1.85],[-11,2.05],[8,2.05],[12,1.6],[15.5,1.0],[18.2,.45],[18.8,0]];
+    var fu = add(new T.LatheGeometry(pr.map(function(q){ return new T.Vector2(q[1], q[0]); }), 28), white); fu.rotation.x = Math.PI/2;
+    var ck = add(new T.SphereGeometry(1, 14, 10), dark, 0, .75, -16.4); ck.scale.set(1.25, .55, 1.35);
+    var stripe = add(new T.CylinderGeometry(2.07, 2.07, 1.0, 28, 1, true), tail, 0, 0, -3); stripe.rotation.x = Math.PI/2; stripe.scale.set(1, 1, 1);
+    var sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(15.8, 8.2); sh.lineTo(15.8, 10.6); sh.lineTo(0, 6.4); sh.lineTo(0, 0);
+    var wg = new T.ExtrudeGeometry(sh, {depth:.45, bevelEnabled:false}); wg.rotateX(Math.PI/2); wg.translate(0, .25, -3.2);
+    var wr = add(wg, white, 1.6, -.9, 0), wl = add(wg, white, -1.6, -.9, 0); wl.scale.x = -1; wr.rotation.z = wl.rotation.z = 0; wr.rotation.z = .05; wl.rotation.z = -.05;
+    [wr, wl].forEach(function(w){ var tip = new T.Mesh(new T.BoxGeometry(.12, 1.7, 1.4), tail); tip.position.set((w===wr?1:-1)*17.2, 1.0, 12.6); g.add(tip); });
+    var sh2 = new T.Shape(); sh2.moveTo(0, 0); sh2.lineTo(6.2, 3.2); sh2.lineTo(6.2, 5.0); sh2.lineTo(0, 3.6); sh2.lineTo(0, 0);
+    var tg = new T.ExtrudeGeometry(sh2, {depth:.3, bevelEnabled:false}); tg.rotateX(Math.PI/2); tg.translate(0, .1, 0);
+    var tpr = add(tg, white, .9, .6, 13.6), tpl = add(tg, white, -.9, .6, 13.6); tpl.scale.x = -1;
+    var fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(6.6, 0); fs.lineTo(3.4, 7.4); fs.lineTo(1.2, 7.4); fs.lineTo(0, 0);
+    var fg = new T.ExtrudeGeometry(fs, {depth:.4, bevelEnabled:false}); fg.translate(0, 0, -.2); fg.rotateY(-Math.PI/2);
+    add(fg, tail, 0, 1.6, 11.2);
+    [-1,1].forEach(function(e){
+      var en = add(new T.CylinderGeometry(1.1, 1.0, 4.6, 16), grey, e*5.8, -1.9, -1.4); en.rotation.x = Math.PI/2;
+      var inl = add(new T.CylinderGeometry(.85, .85, .2, 16), dark, e*5.8, -1.9, -3.75); inl.rotation.x = Math.PI/2;
+    });
+    g.userData.len = 37.6;
+    return g;
+  }
+  function simInit(){
+    var T = THREE;
+    sim.r = new T.WebGLRenderer({canvas:$('#csim'), alpha:true, antialias:true});
+    sim.r.setClearColor(0x000000, 0);
+    sim.scene = new T.Scene();
+    sim.cam3 = new T.PerspectiveCamera(sim.fov, 1.6, 1, 120000);
+    sim.scene.add(new T.HemisphereLight(0xdcebff, 0x7a7766, 1.0));
+    var sun = new T.DirectionalLight(0xfff3dd, 1.15); sun.position.set(300, 500, 200); sim.scene.add(sun);
+    sim.rig = new T.Group(); sim.scene.add(sim.rig); sim.rig.rotation.order = 'YXZ';
+    sim.model = null; sim.modelKey = '';
+    var cyl = new T.CylinderGeometry(1, 1, 1, 8, 1, true);
+    sim.matP = new T.MeshBasicMaterial({color:0x59d0ff, transparent:true, opacity:.9});
+    sim.matF = new T.MeshBasicMaterial({color:0xffb454, transparent:true, opacity:.9});
+    sim.matF2 = new T.MeshBasicMaterial({color:0xffb454, transparent:true, opacity:.35});
+    sim.matG = new T.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.35});
+    sim.past = []; sim.fut = [];
+    for(var i=0;i<82;i++){ var m = new T.Mesh(cyl, sim.matP); m.visible = false; sim.scene.add(m); sim.past.push(m); }
+    for(i=0;i<60;i++){ var m2 = new T.Mesh(cyl, sim.matF); m2.visible = false; sim.scene.add(m2); sim.fut.push(m2); }
+    sim.drop = new T.Mesh(cyl, sim.matG); sim.scene.add(sim.drop);
+    // Dra for å se rundt, klyp/rull for avstand
+    var cv = $('#csim'), ptrs = new Map(), lastD = 0;
+    cv.addEventListener('pointerdown', function(e){ cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); sim.auto = false; simViewBtn(null); lastD = 0; });
+    cv.addEventListener('pointermove', function(e){
+      var pr = ptrs.get(e.pointerId); if(!pr) return;
+      if(ptrs.size === 2){
+        ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+        var a = Array.from(ptrs.values()), dd = Math.hypot(a[0][0]-a[1][0], a[0][1]-a[1][1]);
+        if(lastD) sim.tgt = null, sim.dist = clampN(sim.dist * lastD/dd, 40, 2500);
+        lastD = dd; return;
+      }
+      sim.tgt = null; sim.az = (sim.az - (e.clientX - pr[0])*0.4 + 360) % 360; sim.el = clampN(sim.el + (e.clientY - pr[1])*0.3, -10, 85);
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+    });
+    function up(e){ ptrs.delete(e.pointerId); lastD = 0; }
+    cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', function(e){ e.preventDefault(); sim.tgt = null; sim.dist = clampN(sim.dist * Math.exp(e.deltaY*0.0012), 40, 2500); }, {passive:false});
+  }
+  function simViewBtn(k){ var bs = document.querySelectorAll('#csimv button'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].dataset.v === k); }
+  function simGoto(k){
+    var v = SIM_VIEWS[k]; if(!v) return;
+    sim.tgt = {az:v.az, el:v.el, dist:v.dist}; sim.auto = (k === 'orbit'); simViewBtn(k);
+  }
+  function simStep(dt){
+    if(sim.auto) sim.az = (sim.az + 12*dt) % 360;
+    if(sim.tgt){
+      var k = 1 - Math.pow(0.5, dt/0.2);
+      sim.az = (sim.az + angDiff(sim.az, sim.tgt.az)*(sim.auto ? 0 : k) + 360) % 360;
+      sim.el += (sim.tgt.el - sim.el)*k; sim.dist += (sim.tgt.dist - sim.dist)*k;
+    }
+  }
+  function simOn(){
+    if(pan.on) panOff();
+    if(!sim.r) simInit();
+    sim.on = true; sim.fov = 50; sim.auto = false; sim.tgt = null; sim.az = 180; sim.el = 10; sim.dist = 110; sim.last = 0;
+    $('#csim').hidden = false; $('#cpit').style.display = 'none'; $('#csimv').hidden = false; $('#csimhud').hidden = false;
+    $('#cpil').style.display = 'none'; $('#csimb').textContent = 'Cockpit'; $('#chint').hidden = true;
+    simViewBtn('back'); simResize();
+    try{ cmap && cmap.setVerticalFieldOfView(sim.fov); }catch(e){}
+  }
+  function simOff(quiet){
+    sim.on = false;
+    $('#csim').hidden = true; $('#cpit').style.display = ''; $('#csimv').hidden = true; $('#csimhud').hidden = true;
+    $('#cpil').style.display = ''; $('#csimb').textContent = '3D-flyging';
+    if(!quiet) cResize();
+  }
+  function toggleSim(){
+    if(sim.on){ simOff(); return; }
+    var msg = $('#cmsg'); msg.textContent = 'Laster 3D-flyging …'; msg.hidden = false;
+    loadThree().then(function(){
+      msg.hidden = true; if(!cockOn) return;
+      try{ simOn(); }catch(e){ msg.textContent = '3D-flyging krever WebGL: ' + e.message; msg.hidden = false; }
+    }).catch(function(e){ msg.textContent = e.message; msg.hidden = false; });
+  }
+  function openSim(){
+    if(!sel) return;
+    openCockpit();
+    toggleSim();
+  }
+  function simSeg(m, a, b, r){
+    var T = THREE, dx = b[0]-a[0], dy = b[1]-a[1], dz = b[2]-a[2], len = Math.hypot(dx, dy, dz);
+    if(len < 0.01){ m.visible = false; return; }
+    m.visible = true; m.position.set((a[0]+b[0])/2, (a[1]+b[1])/2, (a[2]+b[2])/2);
+    m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), new T.Vector3(dx/len, dy/len, dz/len));
+    m.scale.set(r, len, r);
+  }
+  function simRender(d, pos, ts, p){
+    var T = THREE, S = sim, c = S.cam; if(!c) return;
+    var heli = isHeli(d), key = (heli ? 'h' : 'p') + '|' + (d.hex || '');
+    if(S.modelKey !== key){
+      if(S.model) S.rig.remove(S.model);
+      var colr = [0x1e4b8f, 0xb3261e, 0x0f7a5c, 0x6a3fb5, 0xc77d12][(parseInt(d.hex||'0', 16) || 0) % 5];
+      S.model = simBuildPlane(heli, colr); S.rig.add(S.model); S.modelKey = key;
+    }
+    var rot = S.model.userData.rot; if(rot){ rot.rotation.y += 0.6; S.model.userData.trot.rotation.x += 0.9; }
+    S.rig.rotation.set(cs.pitch*RAD, -cs.hdg*RAD, -cs.roll*RAD);
+    // Kamera
+    S.cam3.position.set(c.x, c.y, c.z); S.cam3.up.set(0, 1, 0); S.cam3.lookAt(0, 0, 0);
+    if(Math.abs(S.cam3.fov - S.fov) > .01){ S.cam3.fov = S.fov; S.cam3.updateProjectionMatrix(); }
+    // Spor og rute, oppdateres ca. hvert sekund
+    if(ts - (S.last||0) > 900){
+      S.last = ts;
+      var lat0 = pos[0], lon0 = pos[1], kx = 111320*Math.cos(lat0*RAD), curA = (d.alt||0)*0.3048;
+      function rel(la, lo, al){ return [(lo-lon0)*kx, (al||0) - curA, -(la-lat0)*111320]; }
+      var tr = p.trail || [], pts = tr.slice(-81).map(function(q){ return rel(q[0], q[1], q[2]!=null ? q[2]*0.3048 : curA); });
+      pts.push([0, 0, 0]);
+      var cx = c.x, cy = c.y, cz = c.z;
+      for(var i=0;i<S.past.length;i++){
+        var m = S.past[i];
+        if(i+1 >= pts.length){ m.visible = false; continue; }
+        var mid = [(pts[i][0]+pts[i+1][0])/2, (pts[i][1]+pts[i+1][1])/2, (pts[i][2]+pts[i+1][2])/2];
+        var dist = Math.hypot(mid[0]-cx, mid[1]-cy, mid[2]-cz);
+        simSeg(m, pts[i], pts[i+1], Math.min(60, Math.max(1.0, dist*0.0035)));
+      }
+      // Simulert rute foran: mot destinasjonen hvis den er kjent, ellers rett fram langs kursen. Punktene ligger med økende avstand, så linja ser jevn ut fra kameraet
+      var rt = d.call ? cache.route.get(d.call) : null, dst = rt && rt.destination && rt.destination.latitude!=null ? rt.destination : null;
+      var distTo = dst ? km(lat0, lon0, dst.latitude, dst.longitude)*1000 : 0, path = null, cum = null, fp = [[0, 0, 0]], sp = (d.gs||0)*0.514444, th = (d.trk||0)*RAD, i2;
+      if(dst && distTo > 3000 && distTo < 1500000){
+        path = gcPoints(lat0, lon0, dst.latitude, dst.longitude, 120); cum = [0];
+        for(i2=1;i2<path.length;i2++) cum.push(cum[i2-1] + km(path[i2-1][0], path[i2-1][1], path[i2][0], path[i2][1])*1000);
+      }
+      for(i2=0;i2<S.fut.length;i2++){
+        var D = 40*Math.pow(1.15, i2+1), pt;
+        if(path){
+          if(D >= cum[cum.length-1]) break;
+          var j = 1; while(j < cum.length-1 && cum[j] < D) j++;
+          var f = (D - cum[j-1])/Math.max(1, cum[j]-cum[j-1]), la = path[j-1][0] + (path[j][0]-path[j-1][0])*f, lo = path[j-1][1] + (path[j][1]-path[j-1][1])*f;
+          var remM = cum[cum.length-1] - D;
+          pt = rel(la, lo, d.ground ? 0 : Math.max(0, Math.min(curA, remM*0.0524 + 30)));
+        } else {
+          pt = rel(lat0 + D*Math.cos(th)/111320, lon0 + D*Math.sin(th)/kx, Math.max(0, curA + (d.vr||0)*0.00508*(sp>20 ? D/sp : 0)));
+        }
+        fp.push(pt);
+      }
+      for(i2=0;i2<S.fut.length;i2++){
+        var m2 = S.fut[i2], a0 = fp[i2], a1 = fp[i2+1];
+        if(!a0 || !a1){ m2.visible = false; continue; }
+        m2.material = (i2 % 2) ? S.matF2 : S.matF;
+        var mid2 = [(a0[0]+a1[0])/2, (a0[1]+a1[1])/2, (a0[2]+a1[2])/2];
+        simSeg(m2, a0, a1, Math.min(60, Math.max(1.0, Math.hypot(mid2[0]-cx, mid2[1]-cy, mid2[2]-cz)*0.0035)));
+      }
+      // Loddlinje ned mot bakken gir dybdefølelse
+      var drop = Math.min(3000, Math.max(0, (c.altM||0) - (c.ground||0)));
+      simSeg(S.drop, [0, -drop, 0], [0, -4, 0], Math.max(.5, Math.hypot(cx, cy, cz)*0.0016));
+      var el = $('#csimhud');
+      el.innerHTML = esc(d.call || d.hex.toUpperCase()) + ' · ' + (d.alt!=null && !d.ground ? esc(fl(d)) : 'på bakken') + ' · ' + (d.gs!=null ? nb(d.gs)+' kt' : '–') + (dst ? ' → '+esc(dst.iata_code||dst.icao_code||'') : '')
+        + '<small>Simulert 3D fra ADS-B-posisjoner · blått = fløyet, oransje = forventet rute</small>';
+    }
+    S.r.render(S.scene, S.cam3);
+  }
   function cockLoop(ts){
     if(!cockOn) return;
     cockRaf = requestAnimationFrame(cockLoop);
-    if(ts - cockLast < (pan.on ? 15 : 40)) return;      // ca. 25 bilder i sekundet
+    if(ts - cockLast < ((pan.on || sim.on) ? 15 : 40)) return;      // ca. 25 bilder i sekundet
     var dt = Math.min(0.2, (ts - cockLast)/1000 || 0.04); cockLast = ts;
     var p = planes.get(sel), msg = $('#cmsg');
     if(!p){ msg.textContent = 'Signalet fra flyet er borte'; msg.hidden = false; return; }
@@ -1580,13 +1793,24 @@
         try{ cmap.setCenterClampedToGround(false); }catch(e){}
         if(altM > 3500) altM = 3500;
         var co;
-        if(pan.on){ var pc = panStep(dt); co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, pc.b, 90 + pc.e, pc.r); }
+        if(sim.on){
+          simStep(dt);
+          var azW = (cs.hdg + sim.az)*RAD, hh = Math.max(1, sim.dist*Math.cos(sim.el*RAD)), vv = sim.dist*Math.sin(sim.el*RAD);
+          var cE = Math.sin(azW)*hh, cN = Math.cos(azW)*hh;
+          var cla = pos[0] + cN/111320, clo = pos[1] + cE/(111320*Math.cos(pos[0]*RAD)), camAlt = altM + vv, g2 = null;
+          try{ g2 = cmap.queryTerrainElevation([clo, cla]); }catch(e){}
+          if(g2!=null) camAlt = Math.max(camAlt, g2 + 20);
+          var ela = Math.atan2(altM - camAlt, hh)/RAD;
+          co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([clo, cla], camAlt, (azW/RAD + 180) % 360, 90 + ela, 0);
+          sim.cam = {x:cE, y:camAlt - altM, z:-cN, ground:(ground!=null ? ground : 0), altM:altM};
+        }
+        else if(pan.on){ var pc = panStep(dt); co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, pc.b, 90 + pc.e, pc.r); }
         else { var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
           co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll); }
         cmap.jumpTo(co);
       }catch(e){ if(!cs.err){ cs.err = 1; msg.textContent = '3D-feil: ' + e.message; msg.hidden = false; } }
     }
-    if(pan.on) panRender(d, pos, ts); else cDraw(d, pos);
+    if(sim.on) simRender(d, pos, ts, p); else if(pan.on) panRender(d, pos, ts); else cDraw(d, pos);
   }
 
   /* ----- Tegning av cockpit ----- */
@@ -2352,6 +2576,8 @@
   try{ if(window.ResizeObserver) new ResizeObserver(cResizeSoon).observe($('#cock')); }catch(e){}
   $('#cclose').addEventListener('click', closeCockpit);
   $('#cpil').addEventListener('click', function(){ togglePan(); });
+  $('#csimb').addEventListener('click', toggleSim);
+  $('#csimv').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) simGoto(b.dataset.v); });
 
   /* ---------- Oppdateringsløkke ---------- */
   // Én enkelt oppdateringsløkke: hver ny runde avbryter den forrige, og gamle svar ignoreres (gen)
