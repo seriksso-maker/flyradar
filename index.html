@@ -1674,8 +1674,8 @@
     sim.model = null; sim.modelKey = '';
     var cyl = new T.CylinderGeometry(1, 1, 1, 8, 1, true);
     sim.matP = new T.MeshBasicMaterial({color:0x59d0ff, transparent:true, opacity:.9});
-    sim.matF = new T.MeshBasicMaterial({color:0xffb454, transparent:true, opacity:.9});
-    sim.matF2 = new T.MeshBasicMaterial({color:0xffb454, transparent:true, opacity:.35});
+    sim.matF = new T.MeshBasicMaterial({color:0xff2fd0, transparent:true, opacity:.95});
+    sim.matF2 = new T.MeshBasicMaterial({color:0xff2fd0, transparent:true, opacity:.25});
     sim.matG = new T.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:.35});
     sim.past = []; sim.fut = [];
     for(var i=0;i<82;i++){ var m = new T.Mesh(cyl, sim.matP); m.visible = false; sim.scene.add(m); sim.past.push(m); }
@@ -1802,14 +1802,14 @@
         if(!a0 || !a1){ m2.visible = false; continue; }
         m2.material = (i2 % 2) ? S.matF2 : S.matF;
         var mid2 = [(a0[0]+a1[0])/2, (a0[1]+a1[1])/2, (a0[2]+a1[2])/2];
-        simSeg(m2, a0, a1, Math.min(60, Math.max(1.0, Math.hypot(mid2[0]-cx, mid2[1]-cy, mid2[2]-cz)*0.0035)));
+        simSeg(m2, a0, a1, Math.min(14, Math.max(0.5, Math.hypot(mid2[0]-cx, mid2[1]-cy, mid2[2]-cz)*0.0011)));
       }
       // Loddlinje ned mot bakken gir dybdefølelse
       var drop = Math.min(3000, Math.max(0, (c.altM||0) - (c.ground||0)));
       simSeg(S.drop, [0, -drop, 0], [0, -4, 0], Math.max(.5, Math.hypot(cx, cy, cz)*0.0016));
       var el = $('#csimhud');
       el.innerHTML = esc(d.call || d.hex.toUpperCase()) + ' · ' + (d.alt!=null && !d.ground ? esc(fl(d)) : 'på bakken') + ' · ' + (d.gs!=null ? nb(d.gs)+' kt' : '–') + (dst ? ' → '+esc(dst.iata_code||dst.icao_code||'') : '')
-        + '<small>Simulert 3D fra ADS-B-posisjoner · oransje = forventet rute</small>';
+        + '<small>Simulert 3D fra ADS-B-posisjoner · rosa = forventet rute</small>';
     }
     S.r.render(S.scene, S.cam3);
   }
