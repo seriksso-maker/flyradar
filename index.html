@@ -166,9 +166,11 @@
   .call img.big{width:28px;height:28px;border-radius:50%;background:#fff;vertical-align:-5px;margin-right:8px;object-fit:contain}
   .lb{display:none;position:absolute;left:27px;top:7px;font:500 11px var(--mono);color:#cfe3f3;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;pointer-events:none}
   #map.labels .lb{display:block}
-  .ap{position:relative;width:10px;height:10px}
-  .ap i{position:absolute;inset:1px;background:#ff3b30;border:1px solid rgba(0,0,0,.55);border-radius:50%}
-  .ap b{display:none;position:absolute;left:12px;top:-4px;font:600 10px var(--mono);color:#ff9d96;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
+  .ap{position:relative;width:28px;height:28px;cursor:pointer}
+  .ap.maj::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2px solid rgba(255,59,48,.8);animation:apPulse 2.4s ease-out infinite;pointer-events:none}
+  @keyframes apPulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+  .ap i{position:absolute;inset:8px;background:#ff3b30;border:1px solid rgba(0,0,0,.55);border-radius:50%}
+  .ap b{display:none;position:absolute;left:25px;top:5px;font:600 10px var(--mono);color:#ff9d96;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
   #map.aplab .ap b{display:block}
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
   .leaflet-popup-content{font:14px/1.4 var(--ui);margin:10px 14px}
@@ -514,7 +516,7 @@
   var showAps = true, apLayer = L.layerGroup().addTo(map), apMarkers = [];
   AIRPORTS.forEach(function(a){
     var m = L.marker([a[2],a[3]], {
-      icon:L.divIcon({className:'plane', html:'<div class="ap"><i></i><b>'+a[0]+'</b></div>', iconSize:[10,10], iconAnchor:[5,5]}),
+      icon:L.divIcon({className:'plane', html:'<div class="ap'+(a[4]?' maj':'')+'"><i></i><b>'+a[0]+'</b></div>', iconSize:[28,28], iconAnchor:[14,14]}),
       zIndexOffset:-1000, keyboard:false
     });
     m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div><div class="apt" style="margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px"></div>', {minWidth:230});
@@ -529,9 +531,21 @@
       if(show){ if(!apLayer.hasLayer(o.m)) apLayer.addLayer(o.m); }
       else if(apLayer.hasLayer(o.m)) apLayer.removeLayer(o.m);
     });
-    mapEl.classList.toggle('aplab', z>=6);
+    mapEl.classList.toggle('aplab', z>=5);
   }
   map.on('zoomend', updateAirports); updateAirports();
+  // Engangstips om at flyplassene kan trykkes på
+  (function(){
+    var seen = false; try{ seen = localStorage.getItem('flyblikk_aptip') === '1'; }catch(e){}
+    if(seen) return;
+    var tip = document.createElement('div');
+    tip.style.cssText = 'position:fixed;left:50%;top:72px;transform:translateX(-50%);z-index:8000;max-width:min(88vw,340px);padding:10px 14px;border-radius:12px;background:rgba(10,16,23,.94);border:1px solid #ff3b30;color:#e8f1f8;font:500 13px/1.4 var(--ui);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.5);opacity:0;transition:opacity .5s;cursor:pointer';
+    tip.innerHTML = '<span style="color:#ff6b60">●</span> Trykk på en rød flyplass-prikk for vær og live trafikk';
+    function gone(){ if(!tip.parentNode) return; tip.style.opacity = 0; setTimeout(function(){ if(tip.parentNode) tip.parentNode.removeChild(tip); }, 600); try{ localStorage.setItem('flyblikk_aptip', '1'); }catch(e){} }
+    tip.addEventListener('click', gone);
+    setTimeout(function(){ document.body.appendChild(tip); requestAnimationFrame(function(){ tip.style.opacity = 1; }); setTimeout(gone, 8000); }, 6500);
+    map.once('popupopen', gone);
+  })();
 
 
   /* ---------- Vær: METAR for flyplasser og vind/temperatur ved flyet ---------- */
