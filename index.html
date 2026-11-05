@@ -141,6 +141,12 @@
   #c3d{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none}
   #cpan{position:absolute;z-index:6;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;max-width:96vw;overflow-x:auto}
   #cpan[hidden]{display:none}
+  #pmini{position:absolute;z-index:6;left:10px;bottom:54px;width:140px;height:140px;border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.55);box-shadow:0 2px 10px rgba(0,0,0,.5);background:#123;cursor:pointer;transition:width .2s,height .2s}
+  #pmini.big{width:min(60vw,320px);height:min(60vw,320px)}
+  #pmini[hidden]{display:none}
+  #pmap{position:absolute;inset:0}
+  #pcap{position:absolute;z-index:1000;left:0;right:0;bottom:0;padding:2px 4px;font-size:10px;line-height:1.2;color:#fff;background:rgba(0,0,0,.6);text-align:center}
+  .pmk{font-size:22px;line-height:22px;text-align:center;color:#ffcf3a;text-shadow:0 0 3px #000,0 0 6px #000}
   #cpan button{min-height:34px;padding:4px 10px;font-size:12px;background:rgba(10,16,23,.8);white-space:nowrap}
   #cpan button.on{border-color:var(--amber);color:var(--amber)}
   #cpil{position:absolute;z-index:6;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
@@ -282,7 +288,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 20:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 21:00 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -345,6 +351,7 @@
   <div id="chint" hidden>Snu mobilen til liggende for best utsikt</div>
   <button id="cclose" type="button">Tilbake til kart</button>
   <button id="cpil" type="button">Se deg rundt</button>
+  <div id="pmini" hidden><div id="pmap"></div><div id="pcap"></div></div>
   <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
 </div>
 
@@ -1825,6 +1832,28 @@
     pan.ready = true;
   }
 
+  // Lite kart: viser hvor i verden flyet er
+  var mini = null;
+  function miniInit(){
+    var el = $('#pmini');
+    if(!mini){
+      mini = {};
+      mini.map = L.map('pmap', {zoomControl:false, attributionControl:false, dragging:false, scrollWheelZoom:false, doubleClickZoom:false, touchZoom:false, boxZoom:false, keyboard:false, zoomSnap:0.5}).setView([60, 10], 6);
+      L.tileLayer(esri('World_Topo_Map'), {maxNativeZoom:19, maxZoom:19}).addTo(mini.map);
+      mini.mk = L.marker([60, 10], {icon:L.divIcon({className:'', html:'<div class="pmk">✈</div>', iconSize:[22,22], iconAnchor:[11,11]}), interactive:false}).addTo(mini.map);
+      el.addEventListener('click', function(){ el.classList.toggle('big'); setTimeout(function(){ mini.map.invalidateSize(); mini.last = 0; }, 230); });
+    }
+    mini.last = 0; setTimeout(function(){ mini.map.invalidateSize(); }, 50);
+  }
+  function miniUpd(d, pos, ts){
+    if(!mini || ts - (mini.last||0) < 700) return; mini.last = ts;
+    var big = $('#pmini').classList.contains('big');
+    mini.map.setView([pos[0], pos[1]], big ? 7 : 5.5, {animate:false});
+    mini.mk.setLatLng([pos[0], pos[1]]);
+    var ic = mini.mk.getElement(); if(ic && ic.firstChild) ic.firstChild.style.transform = 'rotate(' + Math.round((d.trk||0) - 90) + 'deg)';
+    $('#pcap').textContent = pos[0].toFixed(2) + '°N ' + pos[1].toFixed(2) + '°Ø · ' + Math.round((d.alt||0)/100)*100 + ' ft';
+  }
+
   function panResize(){
     if(!pan.ready || !cL) return;
     var dpr = Math.min(window.devicePixelRatio||1, 1.5);
@@ -1843,14 +1872,14 @@
   function panOn(){
     if(!pan.ready) panInit();
     pan.on = true; pan.fov = 70; pan.yaw = 0; pan.pitch = 0; pan.eye = [0,0.05,0.1]; pan.tgt = null;
-    $('#c3d').hidden = false; $('#cpit').style.display = 'none'; $('#cpan').hidden = false;
+    $('#c3d').hidden = false; $('#cpit').style.display = 'none'; $('#cpan').hidden = false; $('#pmini').hidden = false; miniInit();
     $('#cpil').textContent = 'Frontvindu'; $('#chint').hidden = true;
     panGoto('back'); panResize();
     try{ cmap && cmap.setVerticalFieldOfView(pan.fov); }catch(e){}
   }
   function panOff(){
     pan.on = false; pan.auto = false;
-    $('#c3d').hidden = true; $('#cpit').style.display = ''; $('#cpan').hidden = true;
+    $('#c3d').hidden = true; $('#cpit').style.display = ''; $('#cpan').hidden = true; $('#pmini').hidden = true;
     $('#cpil').textContent = 'Se deg rundt';
     cResize();
   }
@@ -1913,6 +1942,7 @@
       drawInfo(S.info.ctx, ri, d, pos); drawFCU(S.fcu);
       for(var k in S){ S[k].ctx.fillStyle = '#000'; S[k].tex.needsUpdate = true; }
     }
+    miniUpd(d, pos, ts);
     pan.r.render(pan.scene, cam);
   }
 
@@ -1921,7 +1951,7 @@
     var ptr = {}, el = document.getElementById('cock'), pd0 = 0, fov0 = 70;
     function cnt(){ return Object.keys(ptr).length; }
     el.addEventListener('pointerdown', function(e){
-      if(!pan.on || e.target.tagName === 'BUTTON') return;
+      if(!pan.on || e.target.tagName === 'BUTTON' || e.target.closest('#pmini')) return;
       ptr[e.pointerId] = {x:e.clientX, y:e.clientY};
       try{ el.setPointerCapture(e.pointerId); }catch(_){}
       pan.auto = false; pan.tgt = null; document.querySelectorAll('#cpan button').forEach(function(b){ b.classList.remove('on'); });
