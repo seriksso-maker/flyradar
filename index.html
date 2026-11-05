@@ -372,7 +372,7 @@
   window.addEventListener('error', function(ev){
     var s=document.getElementById('stat'); if(s) s.textContent='Feil: '+ev.message;
   });
-  var HOME = [61.3155, 12.2625]; // Trysil (standard)
+  var HOME = [61.07820, 11.97509]; // Grøtbekklia, Trysil (standard)
   try{ var hs = JSON.parse(localStorage.getItem('flyblikk_home')||'null'); if(hs && isFinite(hs[0]) && isFinite(hs[1])) HOME = hs; }catch(e){}
   var PLANE_PATH = 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
 
