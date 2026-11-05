@@ -156,7 +156,10 @@
   #csimhud{position:absolute;z-index:6;top:12px;left:50%;transform:translateX(-50%);max-width:46vw;padding:5px 12px;border-radius:12px;background:rgba(10,16,23,.7);color:#e8f1f8;font:600 12px var(--ui);text-align:center;pointer-events:none;line-height:1.35}
   #csimhud small{display:block;font-weight:400;color:#9fb0c0;font-size:10.5px}
   #csimv{position:absolute;z-index:6;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;max-width:96vw;overflow-x:auto}
-  #csimv[hidden],#csimhud[hidden]{display:none}
+  #csimmaps{position:absolute;z-index:6;left:10px;top:76px;display:flex;flex-direction:column;gap:5px}
+  #csimmaps[hidden],#csimv[hidden],#csimhud[hidden]{display:none}
+  #csimmaps button{min-height:30px;padding:3px 10px;font-size:12px;background:rgba(10,16,23,.8);text-align:left}
+  #csimmaps button.on{border-color:var(--amber);color:var(--amber)}
   #csimv button{min-height:34px;padding:4px 12px;font-size:12px;background:rgba(10,16,23,.8);white-space:nowrap}
   #csimv button.on{border-color:var(--amber);color:var(--amber)}
   #cpil{position:absolute;z-index:6;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
@@ -407,6 +410,7 @@
   <button id="cpil" type="button">Se deg rundt</button>
   <button id="csimb" type="button">3D-flyging</button>
   <div id="csimhud" hidden></div>
+  <div id="csimmaps" hidden><button data-m="sat">Satellitt</button><button data-m="topo">Terreng</button><button data-m="street">Gatekart</button><button data-m="kv">Norge</button></div>
   <div id="csimv" hidden><button data-v="back">Bak</button><button data-v="side">Side</button><button data-v="front">Foran</button><button data-v="top">Over</button><button data-v="orbit">Bane</button></div>
   <div id="pmini" hidden><div id="pmap"></div><div id="pcap"></div></div>
   <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
@@ -1530,9 +1534,12 @@
             version:8,
             sources:{
               sat:{type:'raster', tileSize:256, maxzoom:18, attribution:'Esri', tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']},
+              topo:{type:'raster', tileSize:256, maxzoom:17, tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}']},
+              street:{type:'raster', tileSize:256, maxzoom:17, tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}']},
+              kv:{type:'raster', tileSize:256, maxzoom:18, tiles:[KV[simKvIdx()]]},
               dem:{type:'raster-dem', tileSize:256, maxzoom:14, encoding:'terrarium', tiles:['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
             },
-            layers:[{id:'sat', type:'raster', source:'sat', paint:{'raster-fade-duration':0}}],
+            layers:['sat','topo','street','kv'].map(function(k){ return {id:k, type:'raster', source:k, layout:{visibility:(k===simMap ? 'visible' : 'none')}, paint:{'raster-fade-duration':0}}; }),
             terrain:{source:'dem', exaggeration:1},
             sky:{'sky-color':'#3f86d6', 'horizon-color':'#d3e6f4', 'fog-color':'#dbe7ee', 'sky-horizon-blend':0.55, 'horizon-fog-blend':0.8, 'fog-ground-blend':0.55}
           }
@@ -1562,6 +1569,16 @@
 
   /* ----- 3D-flyging: følg flyet utenfra over terrenget, med fløyet spor og simulert rute foran ----- */
   var SIM_VIEWS = {back:{az:180, el:10, dist:110}, side:{az:90, el:6, dist:110}, front:{az:0, el:8, dist:130}, top:{az:180, el:80, dist:170}, orbit:{az:180, el:14, dist:130}};
+  var SIM_MAPS = {sat:['Satellitt', 'Bilder © Esri World Imagery'], topo:['Terreng', 'Kart © Esri'], street:['Gatekart', 'Kart © Esri, OpenStreetMap-bidragsytere'], kv:['Norge', 'Kart © Kartverket']};
+  var simMap = (function(){ try{ var m = localStorage.getItem('flyblikk_simmap'); return SIM_MAPS[m] ? m : 'sat'; }catch(e){ return 'sat'; } })();
+  function simKvIdx(){ try{ var i = parseInt(localStorage.getItem('flyradar_kv'), 10); return (i>=0 && i<KV.length) ? i : 0; }catch(e){ return 0; } }
+  function simSetMap(k){
+    if(!SIM_MAPS[k]) return;
+    simMap = k; try{ localStorage.setItem('flyblikk_simmap', k); }catch(e){}
+    if(cmap){ ['sat','topo','street','kv'].forEach(function(x){ try{ cmap.setLayoutProperty(x, 'visibility', x===k ? 'visible' : 'none'); }catch(e){} }); }
+    var bs = document.querySelectorAll('#csimmaps button'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].dataset.m === k);
+    var at = document.querySelector('#cock .cattr'); if(at) at.textContent = SIM_MAPS[k][1] + ' · Terreng: AWS/Mapzen · MapLibre';
+  }
   function simResize(){
     if(!sim.r || !cL) return;
     sim.r.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5)); sim.r.setSize(cL.W, cL.H, false);
@@ -1664,13 +1681,15 @@
     sim.on = true; sim.fov = 50; sim.auto = false; sim.tgt = null; sim.az = 180; sim.el = 10; sim.dist = 110; sim.last = 0;
     $('#csim').hidden = false; $('#cpit').style.display = 'none'; $('#csimv').hidden = false; $('#csimhud').hidden = false;
     $('#cpil').style.display = 'none'; $('#csimb').textContent = 'Cockpit'; $('#chint').hidden = true;
-    simViewBtn('back'); simResize();
+    simViewBtn('back'); simResize(); $('#csimmaps').hidden = false; simSetMap(simMap);
     try{ cmap && cmap.setVerticalFieldOfView(sim.fov); }catch(e){}
   }
   function simOff(quiet){
     sim.on = false;
     $('#csim').hidden = true; $('#cpit').style.display = ''; $('#csimv').hidden = true; $('#csimhud').hidden = true;
-    $('#cpil').style.display = ''; $('#csimb').textContent = '3D-flyging';
+    $('#cpil').style.display = ''; $('#csimb').textContent = '3D-flyging'; $('#csimmaps').hidden = true;
+    var at0 = document.querySelector('#cock .cattr'); if(at0) at0.textContent = 'Bilder © Esri World Imagery · Terreng: AWS/Mapzen · MapLibre';
+    if(cmap){ ['sat','topo','street','kv'].forEach(function(x){ try{ cmap.setLayoutProperty(x, 'visibility', x==='sat' ? 'visible' : 'none'); }catch(e){} }); }
     if(!quiet) cResize();
   }
   function toggleSim(){
@@ -2577,6 +2596,7 @@
   $('#cclose').addEventListener('click', closeCockpit);
   $('#cpil').addEventListener('click', function(){ togglePan(); });
   $('#csimb').addEventListener('click', toggleSim);
+  $('#csimmaps').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) simSetMap(b.dataset.m); });
   $('#csimv').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b) simGoto(b.dataset.v); });
 
   /* ---------- Oppdateringsløkke ---------- */
