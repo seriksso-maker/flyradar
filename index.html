@@ -910,7 +910,7 @@
     });
     if(sel){
       var sp = planes.get(sel);
-      if(sp && sp.marker && sp.marker._map){ var ll = sp.marker.getLatLng(); trailLine.setLatLngs(sp.trail.concat([[ll.lat, ll.lng]])); }
+      if(sp && sp.marker && sp.marker._map){ var ll = sp.marker.getLatLng(); trailLine.setLatLngs(sp.trail.concat([[ll.lat, ll.lng]])); updRoute(); }
     }
     if(follow && sel){
       var fp = planes.get(sel);
@@ -950,14 +950,25 @@
   function hm(h){ var m = Math.max(0, Math.round(h*60)); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
 
   // Planlagt rute (stiplet lilla linje) mellom avgang og ankomst
+  var routeEnds = null, routeLine = null;
+  // Ruta går via flyets faktiske posisjon, så den alltid treffer flyet
+  function updRoute(){
+    if(!routeEnds || !routeLine || !sel) return;
+    var p = planes.get(sel), o = routeEnds[0], t = routeEnds[1];
+    if(!p || !p.marker) return;
+    var ll = p.marker.getLatLng();
+    routeLine.setLatLngs([gcPoints(o.latitude, o.longitude, ll.lat, ll.lng, 40), gcPoints(ll.lat, ll.lng, t.latitude, t.longitude, 40)]);
+  }
   function drawRoute(r){
     var ok = r && r.origin && r.destination && r.origin.latitude!=null && r.destination.latitude!=null && showRoute;
     var key = ok ? sel+'|'+(r.callsign_icao||'') : '';
     if(key===routeDrawn) return;
-    routeDrawn = key; routeLayer.clearLayers();
+    routeDrawn = key; routeLayer.clearLayers(); routeEnds = null; routeLine = null;
     if(!ok) return;
     var o = r.origin, t = r.destination;
-    L.polyline(gcPoints(o.latitude, o.longitude, t.latitude, t.longitude, 64), {color:'#a78bfa', weight:2, opacity:.9, dashArray:'6 6', interactive:false}).addTo(routeLayer);
+    routeEnds = [o, t];
+    routeLine = L.polyline([], {color:'#a78bfa', weight:2, opacity:.9, dashArray:'6 6', interactive:false}).addTo(routeLayer);
+    updRoute();
     [o, t].forEach(function(x){
       L.circleMarker([x.latitude, x.longitude], {radius:5, color:'#a78bfa', weight:2, fillColor:'#0a1017', fillOpacity:1, interactive:false})
         .bindTooltip(esc(x.iata_code||x.icao_code||''), {permanent:true, direction:'top', className:'rt'}).addTo(routeLayer);
@@ -1093,7 +1104,7 @@
       if(p) lookup(p.d);
     } else {
       trailLine.setLatLngs([]);
-      follow = false; more = false; routeDrawn = ''; routeLayer.clearLayers(); closeCockpit();
+      follow = false; more = false; routeDrawn = ''; routeEnds = null; routeLine = null; routeLayer.clearLayers(); closeCockpit();
     }
     renderPanel();
   }
