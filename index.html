@@ -134,10 +134,11 @@
   #cmap{position:absolute;inset:0}
   #cmap canvas{outline:none}
   #cpit{position:absolute;left:0;top:0;pointer-events:none}
-  .cattr{position:absolute;z-index:3;left:8px;top:6px;font-size:9px;color:rgba(255,255,255,.7);text-shadow:0 0 3px #000}
+  .cattr{position:absolute;z-index:3;left:8px;top:48px;font-size:9px;color:rgba(255,255,255,.7);text-shadow:0 0 3px #000}
   .cmsg{position:absolute;z-index:4;left:50%;top:30%;transform:translateX(-50%);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;text-align:center;max-width:80%}
   #chint{position:absolute;z-index:4;left:50%;top:14%;transform:translateX(-50%);padding:8px 12px;background:rgba(10,16,23,.85);border:1px solid var(--line);border-radius:6px;font-size:13px;text-align:center}
   #cclose{position:absolute;z-index:5;top:10px;right:10px}
+  #cpil{position:absolute;z-index:5;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
   #air{min-width:190px;max-width:100%}
   #air.on{border-color:var(--amber);color:var(--amber)}
   .photo{display:block;width:100%;max-height:150px;object-fit:cover;border-bottom:1px solid var(--line)}
@@ -337,6 +338,7 @@
   <div id="cmsg" class="cmsg" hidden></div>
   <div id="chint" hidden>Snu mobilen til liggende for best utsikt</div>
   <button id="cclose" type="button">Tilbake til kart</button>
+  <button id="cpil" type="button">Pilotene: på</button>
 </div>
 
 <div class="status">
@@ -1157,6 +1159,7 @@
     try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
     try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function(){}); }catch(e){}
     var d = p.d;
+    $('#cpil').textContent = 'Pilotene: ' + (cockBack ? 'på' : 'av');
     cs = {hdg:d.trk||0, roll:0, pitch:attitude(d).pitch, spd:d.ias!=null?d.ias:(d.gs||0), alt:d.alt||0, vs:d.vr||0, prevHdg:d.trk||0, bg:null};
     var msg = $('#cmsg'); msg.textContent = 'Laster 3D-kart …'; msg.hidden = false;
     cResize();
@@ -1503,10 +1506,78 @@
     c.restore();
   }
 
+
+  /* Pilotene sett bakfra (kapteinen til venstre, styrmannen til høyre) */
+  var cockBack = true;
+  try{ cockBack = localStorage.getItem('flyradar_pilots') !== '0'; }catch(e){}
+  function drawPilot(c, hx, hy, s, stripes){
+    c.save();
+    var W = cL.W, H = cL.H;
+    // Setet
+    var sg = c.createLinearGradient(0, hy - 1.3*s, 0, H);
+    sg.addColorStop(0, '#2b323b'); sg.addColorStop(1, '#10141a');
+    c.fillStyle = sg; rr(c, hx - 1.75*s, hy - 1.25*s, 3.5*s, H - (hy - 1.25*s) + 40, 0.5*s); c.fill();
+    c.fillStyle = '#394250'; rr(c, hx - 0.95*s, hy - 1.45*s, 1.9*s, 0.8*s, 0.35*s); c.fill();          // nakkestøtte
+    c.strokeStyle = 'rgba(140,175,215,.28)'; c.lineWidth = 1.5; rr(c, hx - 1.75*s, hy - 1.25*s, 3.5*s, 3*s, 0.5*s); c.stroke();
+    // Skuldre og overkropp (hvit uniformsskjorte, mørk jakke-skygge)
+    var bg = c.createLinearGradient(0, hy + 0.9*s, 0, H);
+    bg.addColorStop(0, '#d9e0e8'); bg.addColorStop(.45, '#aab5c2'); bg.addColorStop(1, '#4c5663');
+    c.fillStyle = bg;
+    c.beginPath();
+    c.moveTo(hx - 0.42*s, hy + 0.72*s);
+    c.quadraticCurveTo(hx - 1.1*s, hy + 0.95*s, hx - 1.42*s, hy + 1.35*s);
+    c.quadraticCurveTo(hx - 1.62*s, hy + 1.8*s, hx - 1.6*s, H + 40);
+    c.lineTo(hx + 1.6*s, H + 40);
+    c.quadraticCurveTo(hx + 1.62*s, hy + 1.8*s, hx + 1.42*s, hy + 1.35*s);
+    c.quadraticCurveTo(hx + 1.1*s, hy + 0.95*s, hx + 0.42*s, hy + 0.72*s);
+    c.closePath(); c.fill();
+    // Ryggsøm og skyggefold
+    c.strokeStyle = 'rgba(40,50,62,.35)'; c.lineWidth = 2; c.beginPath(); c.moveTo(hx, hy + 1.0*s); c.lineTo(hx, H); c.stroke();
+    // Epåletter (gylne striper) på skuldrene
+    [-1, 1].forEach(function(sd){
+      c.save(); c.translate(hx + sd*1.05*s, hy + 1.18*s); c.rotate(sd*0.32);
+      c.fillStyle = '#1b2430'; rr(c, -0.4*s, -0.14*s, 0.8*s, 0.5*s, 0.06*s); c.fill();
+      c.fillStyle = '#e3b64e';
+      for(var i=0; i<stripes; i++) c.fillRect(-0.34*s, -0.1*s + i*0.1*s, 0.68*s, 0.055*s);
+      c.restore();
+    });
+    // Skjortekrage og nakke
+    c.fillStyle = '#f1f4f8'; c.beginPath(); c.ellipse(hx, hy + 0.78*s, 0.5*s, 0.18*s, 0, 0, 7); c.fill();
+    c.fillStyle = '#7a5b49'; c.fillRect(hx - 0.2*s, hy + 0.42*s, 0.4*s, 0.4*s);
+    // Hode (sett bakfra): hår
+    var hg = c.createRadialGradient(hx - 0.15*s, hy - 0.2*s, 0.1*s, hx, hy, 0.7*s);
+    hg.addColorStop(0, '#3a2f29'); hg.addColorStop(1, '#14100d');
+    c.fillStyle = hg; c.beginPath(); c.ellipse(hx, hy, 0.52*s, 0.62*s, 0, 0, 7); c.fill();
+    // Ører
+    c.fillStyle = '#7a5b49';
+    c.beginPath(); c.ellipse(hx - 0.55*s, hy + 0.05*s, 0.09*s, 0.17*s, 0, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(hx + 0.55*s, hy + 0.05*s, 0.09*s, 0.17*s, 0, 0, 7); c.fill();
+    // Headset: bøyle og øreklokker
+    c.strokeStyle = '#0b0d11'; c.lineWidth = 0.12*s; c.lineCap = 'round';
+    c.beginPath(); c.ellipse(hx, hy - 0.02*s, 0.56*s, 0.66*s, 0, Math.PI*1.05, Math.PI*1.95); c.stroke();
+    c.fillStyle = '#12161c';
+    rr(c, hx - 0.74*s, hy - 0.2*s, 0.3*s, 0.48*s, 0.12*s); c.fill();
+    rr(c, hx + 0.44*s, hy - 0.2*s, 0.3*s, 0.48*s, 0.12*s); c.fill();
+    c.strokeStyle = '#0b0d11'; c.lineWidth = 0.05*s; c.beginPath(); c.moveTo(hx - 0.6*s, hy + 0.28*s); c.quadraticCurveTo(hx - 0.5*s, hy + 0.58*s, hx - 0.15*s, hy + 0.66*s); c.stroke();
+    // Lys fra vinduene langs hodet og skuldrene
+    c.strokeStyle = 'rgba(150,195,240,.45)'; c.lineWidth = 1.6;
+    c.beginPath(); c.ellipse(hx, hy, 0.52*s, 0.62*s, 0, Math.PI*1.12, Math.PI*1.88); c.stroke();
+    c.beginPath(); c.moveTo(hx - 0.42*s, hy + 0.72*s); c.quadraticCurveTo(hx - 1.1*s, hy + 0.95*s, hx - 1.42*s, hy + 1.35*s); c.stroke();
+    c.beginPath(); c.moveTo(hx + 0.42*s, hy + 0.72*s); c.quadraticCurveTo(hx + 1.1*s, hy + 0.95*s, hx + 1.42*s, hy + 1.35*s); c.stroke();
+    c.restore();
+  }
+  function drawPilots(c, L){
+    var s, hy, x1, x2;
+    if(L.port){ s = L.W*0.075; hy = L.wy - 0.55*s; x1 = L.W*0.14; x2 = L.W*0.86; }
+    else { s = L.H*0.1; hy = L.H*0.64; x1 = L.W*0.135; x2 = L.W*0.865; }
+    drawPilot(c, x1, hy, s, 4);
+    drawPilot(c, x2, hy, s, 3);
+  }
   function cDraw(d, pos){
     var c = cctx, L = cL; if(!c || !L) return;
     c.clearRect(0, 0, L.W, L.H);
     drawFrame(c, L);
+    if(cockBack) drawPilots(c, L);
     drawPFD(c, L.pfd, d);
     drawND(c, L.nd, d, pos);
     drawInfo(c, L.info, d, pos);
@@ -1522,6 +1593,7 @@
   window.addEventListener('orientationchange', function(){ setTimeout(cResizeSoon, 200); });
   try{ if(window.ResizeObserver) new ResizeObserver(cResizeSoon).observe($('#cock')); }catch(e){}
   $('#cclose').addEventListener('click', closeCockpit);
+  $('#cpil').addEventListener('click', function(){ cockBack = !cockBack; this.textContent = 'Pilotene: ' + (cockBack ? 'på' : 'av'); try{ localStorage.setItem('flyradar_pilots', cockBack ? '1' : '0'); }catch(e){} });
 
   /* ---------- Oppdateringsløkke ---------- */
   // Én enkelt oppdateringsløkke: hver ny runde avbryter den forrige, og gamle svar ignoreres (gen)
