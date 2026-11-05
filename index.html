@@ -1772,7 +1772,7 @@
       var cx = c.x, cy = c.y, cz = c.z;
       for(var i=0;i<S.past.length;i++){
         var m = S.past[i];
-        if(i+1 >= pts.length){ m.visible = false; continue; }
+        if(true){ m.visible = false; continue; }   // fløyet spor (blå linje) er skjult
         var mid = [(pts[i][0]+pts[i+1][0])/2, (pts[i][1]+pts[i+1][1])/2, (pts[i][2]+pts[i+1][2])/2];
         var dist = Math.hypot(mid[0]-cx, mid[1]-cy, mid[2]-cz);
         simSeg(m, pts[i], pts[i+1], Math.min(60, Math.max(1.0, dist*0.0035)));
@@ -1809,7 +1809,7 @@
       simSeg(S.drop, [0, -drop, 0], [0, -4, 0], Math.max(.5, Math.hypot(cx, cy, cz)*0.0016));
       var el = $('#csimhud');
       el.innerHTML = esc(d.call || d.hex.toUpperCase()) + ' · ' + (d.alt!=null && !d.ground ? esc(fl(d)) : 'på bakken') + ' · ' + (d.gs!=null ? nb(d.gs)+' kt' : '–') + (dst ? ' → '+esc(dst.iata_code||dst.icao_code||'') : '')
-        + '<small>Simulert 3D fra ADS-B-posisjoner · blått = fløyet, oransje = forventet rute</small>';
+        + '<small>Simulert 3D fra ADS-B-posisjoner · oransje = forventet rute</small>';
     }
     S.r.render(S.scene, S.cam3);
   }
