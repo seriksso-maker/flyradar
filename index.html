@@ -288,7 +288,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 22:10 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 22:50 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -352,7 +352,7 @@
   <button id="cclose" type="button">Tilbake til kart</button>
   <button id="cpil" type="button">Se deg rundt</button>
   <div id="pmini" hidden><div id="pmap"></div><div id="pcap"></div></div>
-  <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
+  <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button><button data-v="style" id="cstyle">Cockpit: 747</button></div>
 </div>
 
 <div class="status">
@@ -1096,7 +1096,7 @@
   map.on('click', function(){ if(sel) select(null); });
 
   /* ---------- Cockpit-visning: 3D-terreng sett fra flyet + tegnet cockpit ---------- */
-  var pan = {on:false}, cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
+  var cockStyle = (function(){ try{ return localStorage.getItem('flyradar_cstyle') === '320' ? '320' : '747'; }catch(e){ return '747'; } })(), pan = {on:false}, cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
   var ML_URL = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl';
 
   function loadMapLibre(){
@@ -1627,6 +1627,12 @@
   function drawFCU(t){
     var c = t.ctx, W = t.cv.width, H = t.cv.height, mono = 'ui-monospace,Menlo,monospace';
     c.fillStyle = '#17191d'; c.fillRect(0, 0, W, H);
+    if(cockStyle === '747'){
+      var it7 = [['CRS', pad3(cs.hdg)], ['IAS/MACH', String(Math.round(cs.spd||0)).padStart(3,'0')], ['HDG', pad3(cs.hdg)], ['ALT', String(Math.round((cs.alt||0)/100)*100).padStart(5,'0')], ['V/S', (cs.vs<0?'-':'+') + String(Math.abs(Math.round((cs.vs||0)/100)*100)).padStart(4,'0')]];
+      c.fillStyle = '#3d4046'; c.fillRect(0, 0, W, H);
+      for(var j=0;j<5;j++){ var x7 = 14 + j*98; c.fillStyle = '#050607'; c.fillRect(x7, 18, 88, 28); c.fillStyle = '#c9ced4'; c.font = '600 9px ' + mono; c.textAlign = 'left'; c.fillText(it7[j][0], x7+2, 13); c.fillStyle = '#ff5a1f'; c.font = '700 22px ' + mono; c.textAlign = 'right'; c.fillText(it7[j][1], x7+84, 41); c.fillStyle = '#c8ccd2'; for(var bb=0;bb<4;bb++) c.fillRect(x7+bb*21, 51, 17, 8); }
+      t.tex.needsUpdate = true; return;
+    }
     var items = [['SPD', String(Math.round(cs.spd||0)).padStart(3,'0')], ['HDG', pad3(cs.hdg)], ['ALT', String(Math.round((cs.alt||0)/100)*100).padStart(5,'0')], ['V/S', (cs.vs<0?'-':'+') + String(Math.abs(Math.round((cs.vs||0)/100)*100)).padStart(4,'0')]];
     for(var i=0;i<4;i++){
       var x = 22 + i*122; c.fillStyle = '#050607'; c.fillRect(x, 20, 104, 34);
@@ -1698,7 +1704,7 @@
     var sat = 15 - 1.98*alt/1000, a = 661.47*Math.sqrt((sat+273.15)/288.15), M = Math.min(0.95, (cs.spd||0)/a), tat = (sat+273.15)*(1+0.2*M*M)-273.15;
     function P(h){ return 14.696*Math.pow(1 - 6.8756e-6*h, 5.2559); }
     var cab = Math.min(alt, 450 + alt*0.17), dp = P(cab) - P(alt);
-    c.fillStyle = '#47ff6a'; c.font = '700 20px ' + mono; c.textAlign = 'center'; c.fillText('CRUISE', W/2, 28);
+    c.fillStyle = '#47ff6a'; c.font = '700 20px ' + mono; c.textAlign = 'center'; c.fillText(cockStyle === '747' ? 'EICAS · SYS' : 'CRUISE', W/2, 28);
     c.strokeStyle = '#d9dde2'; c.lineWidth = 2; c.beginPath(); c.moveTo(12, 38); c.lineTo(W-12, 38); c.stroke();
     var rows = [['SAT', Math.round(sat) + '°C'], ['TAT', Math.round(tat) + '°C'], ['MACH', M.toFixed(2)], ['CAB ALT', Math.round(cab/50)*50 + ' FT'], ['Δ P', dp.toFixed(1) + ' PSI'], ['V/S', Math.round((cs.vs||0)/50)*50 + ' FPM']];
     c.font = '600 17px ' + mono;
@@ -1706,17 +1712,20 @@
     c.textAlign = 'center'; c.fillStyle = '#9aa3ad'; c.font = '600 11px ' + mono; c.fillText('SIM · beregnet fra flydata', W/2, H-8);
     t.tex.needsUpdate = true;
   }
-  function a320(g, T, X, ZF, ZB, Y0, Y1){
+  function a320(g, T, X, ZF, ZB, Y0, Y1, b747){
     function m(c){ return new T.MeshLambertMaterial({color:c}); }
     function cyl(r1, r2, h, c, x, y, z, rx, rz){ var q = new T.Mesh(new T.CylinderGeometry(r1, r2, h, 14), m(c)); q.position.set(x, y, z); q.rotation.set(rx||0, 0, rz||0); g.add(q); return q; }
     function ball(r, c, x, y, z, sx, sy, sz){ var q = new T.Mesh(new T.SphereGeometry(r, 14, 12), m(c)); q.position.set(x, y, z); q.scale.set(sx||1, sy||1, sz||1); g.add(q); return q; }
     function bx(w, h, d, c, x, y, z, rx){ var q = new T.Mesh(new T.BoxGeometry(w, h, d), m(c)); q.position.set(x, y, z); q.rotation.x = rx||0; g.add(q); return q; }
+    if(!b747){
     // Pedestal: gasshendler med spor, klaffer, speedbrake, trimhjul
     bx(0.2, 0.012, 0.22, 0x14171a, 0, -0.197, -0.5);
     [-0.035, 0.035].forEach(function(x){ bx(0.012, 0.012, 0.2, 0x050607, x, -0.2, -0.5); cyl(0.011, 0.011, 0.16, 0x1d2126, x, -0.14, -0.43, 0.55); ball(0.025, 0x0d0f12, x, -0.075, -0.385, 1, 0.8, 1.3); bx(0.02, 0.008, 0.03, 0xe8e8e8, x, -0.062, -0.39, 0.4); });
     cyl(0.009, 0.009, 0.1, 0x2a2f35, -0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, -0.085, -0.1, -0.455);      // speedbrake
     cyl(0.009, 0.009, 0.1, 0x2a2f35, 0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, 0.085, -0.1, -0.455);       // klaffer
     [-1, 1].forEach(function(e){ var w = cyl(0.075, 0.075, 0.025, 0x23272c, e*0.125, -0.3, -0.3, 0, Math.PI/2); for(var k=0;k<10;k++){ var a = k/10*Math.PI*2; bx(0.026, 0.01, 0.01, 0x777d85, e*0.125, -0.3+Math.sin(a)*0.075, -0.3+Math.cos(a)*0.075); } });
+    }
+    if(!b747){
     // Sidestikker
     [-1, 1].forEach(function(e){
       var x = e*0.82;
@@ -1727,6 +1736,25 @@
       bx(0.1, 0.02, 0.18, 0x4f545b, x + e*0.05, -0.55, 0.12);               // armlene
       cyl(0.03, 0.03, 0.03, 0x1a1d21, e*0.98, -0.42, -0.1, 0, Math.PI/2);    // tiller
     });
+    }
+
+    if(b747){
+      // Boeing 747: fire gasshendler med reversspaker, speedbrake, klaffer
+      bx(0.2, 0.012, 0.24, 0x14171a, 0, -0.197, -0.5);
+      for(var k=0;k<4;k++){ var lx = -0.075 + k*0.05; bx(0.012, 0.012, 0.22, 0x050607, lx, -0.2, -0.5);
+        cyl(0.012, 0.012, 0.19, 0x15181c, lx, -0.135, -0.44, 0.6); ball(0.026, 0x0b0c0e, lx, -0.06, -0.385, 1, 0.8, 1.35); bx(0.016, 0.008, 0.03, 0xdadada, lx, -0.042, -0.39, 0.45);
+        cyl(0.008, 0.008, 0.09, 0x30343a, lx, -0.16, -0.54, -0.4); ball(0.013, 0x30343a, lx, -0.12, -0.565); }
+      cyl(0.009, 0.009, 0.12, 0x3a3f45, -0.108, -0.14, -0.45, 0.45); ball(0.017, 0x3a3f45, -0.108, -0.085, -0.425);      // speedbrake
+      cyl(0.009, 0.009, 0.12, 0x3a3f45, 0.108, -0.14, -0.45, 0.45); ball(0.017, 0x3a3f45, 0.108, -0.085, -0.425);        // klaffer
+      [-1, 1].forEach(function(e){ var w = cyl(0.075, 0.075, 0.025, 0x23272c, e*0.125, -0.3, -0.3, 0, Math.PI/2); for(var q=0;q<10;q++){ var an = q/10*Math.PI*2; bx(0.026, 0.01, 0.01, 0x777d85, e*0.125, -0.3+Math.sin(an)*0.075, -0.3+Math.cos(an)*0.075); } });
+      // Ratt (yoke) foran hver pilot
+      [-0.6, 0.6].forEach(function(px){
+        var col = cyl(0.022, 0.03, 0.42, 0x1b1e22, px, -0.55, -0.34, 0.75); col.rotation.x = 0.75;
+        var w = new T.Mesh(new T.TorusGeometry(0.105, 0.013, 10, 32, Math.PI*1.62), m(0x17191d)); w.position.set(px, -0.37, -0.19); w.rotation.set(-0.25, 0, 2.2); g.add(w);
+        bx(0.07, 0.07, 0.05, 0x17191d, px, -0.4, -0.2); bx(0.05, 0.02, 0.012, 0xd8d8d8, px, -0.385, -0.178);
+        [-1, 1].forEach(function(e){ cyl(0.017, 0.017, 0.1, 0x101214, px + e*0.1, -0.4, -0.2, 0, 0); });
+      });
+    }
     // Visker
     [-1, 1].forEach(function(e){ var w = bx(0.012, 0.5, 0.008, 0x0a0b0d, e*0.5, 0.33, ZF+0.02); w.rotation.z = e*0.55; var b = bx(0.008, 0.42, 0.006, 0x0a0b0d, e*0.5+e*0.04, 0.33, ZF+0.018); b.rotation.z = e*0.5; });
     // Taklys og overhead-kant
@@ -1736,7 +1764,8 @@
   }
 
   function panBuild(){
-    var T = THREE, g = new T.Group();
+    var T = THREE, g = new T.Group(), B7 = cockStyle === '747';
+    var PAL = B7 ? {f:0x8b8981, s:0x908e86, r:0xa7a59d, b:0x858379, d:0x35373b} : {f:0x6f747b, s:0x7a7f86, r:0x9ba0a6, b:0x70757c, d:0x2e3238};
     function mat(c){ return new T.MeshLambertMaterial({color:c}); }
     function box(w, h, d, c, x, y, z, parent){ var m = new T.Mesh(new T.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); (parent||g).add(m); return m; }
     function wall(shape, c){ return new T.Mesh(new T.ShapeGeometry(shape), new T.MeshLambertMaterial({color:c, side:T.DoubleSide})); }
@@ -1745,21 +1774,21 @@
     // Frontvegg med to vinduer
     var s = new T.Shape(); rectP(s, -X, Y0, X, Y1);
     s.holes.push(rectP(null, -1.02, -0.02, -0.04, 0.72, true), rectP(null, 0.04, -0.02, 1.02, 0.72, true));
-    var fw = wall(s, 0x6f747b); fw.position.z = ZF; g.add(fw);
+    var fw = wall(s, PAL.f); fw.position.z = ZF; g.add(fw);
     // Sidevegger med vindu
     [-1, 1].forEach(function(sx){
       var sh = new T.Shape(); rectP(sh, ZF, Y0, ZB, Y1);
       sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true), rectP(null, 0.12, -0.02, 0.85, 0.72, true));
-      var sw = wall(sh, 0x7a7f86); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
+      var sw = wall(sh, PAL.s); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
     });
     box(2*X, 0.02, ZB-ZF, 0x2a2d31, 0, Y0, (ZB+ZF)/2);                 // gulv
-    box(2*X, 0.02, ZB-ZF, 0x9ba0a6, 0, Y1, (ZB+ZF)/2);                 // tak
+    box(2*X, 0.02, ZB-ZF, PAL.r, 0, Y1, (ZB+ZF)/2);                 // tak
     var bs = new T.Shape(); rectP(bs, -X, Y0, X, Y1); bs.holes.push(rectP(null, -1.05, -0.02, -0.07, 0.72, true), rectP(null, 0.07, -0.02, 1.05, 0.72, true));
-    var bw = wall(bs, 0x70757c); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
+    var bw = wall(bs, PAL.b); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
     [-0.56, 0.56].forEach(function(bx){ box(0.98, 0.03, 0.03, 0x3b3f45, bx, 0.725, ZB-0.01); box(0.98, 0.03, 0.03, 0x3b3f45, bx, -0.03, ZB-0.01); });
     box(1.1, 0.12, 0.6, 0x8d9299, 0, Y1-0.07, -0.88);                 // overheadpanel
     // Dashbord og glareshield
-    box(2*X-0.02, 0.5, 0.58, 0x2e3238, 0, -0.55, ZF+0.31);
+    box(2*X-0.02, 0.5, 0.58, PAL.d, 0, -0.55, ZF+0.31);
     box(2*X-0.02, 0.05, 0.12, 0x202328, 0, -0.07, ZF+0.1);
     box(0.22, 0.9, 0.5, 0x4a4f57, 0, -0.65, -0.35);                    // sentersokkel
     // Skjermer
@@ -1851,7 +1880,7 @@
 
     }
     pilot(-0.6, 4, true, 0xd9a98a, 0x3b2a1b, true); pilot(0.6, 3, false, 0xc48a68, 0x6b6b6b, false);
-    realism(g, T, X, ZF, ZB, Y0, Y1, scr); a320(g, T, X, ZF, ZB, Y0, Y1);
+    realism(g, T, X, ZF, ZB, Y0, Y1, scr); a320(g, T, X, ZF, ZB, Y0, Y1, B7);
     g.add(new T.HemisphereLight(0xeef3fa, 0x3a342e, 0.85));
     var dl = new T.DirectionalLight(0xfff0d8, 0.95); dl.position.set(-0.9, 1.3, -3.2); dl.target.position.set(0, -0.3, 0.2); g.add(dl); g.add(dl.target);
     dl.castShadow = true; dl.shadow.mapSize.set(1024, 1024); dl.shadow.bias = -0.002; var sc = dl.shadow.camera; sc.left = -1.8; sc.right = 1.8; sc.top = 1.8; sc.bottom = -1.8; sc.near = 0.5; sc.far = 8;
@@ -1867,7 +1896,11 @@
     pan.scene = new T.Scene();
     pan.cam = new T.PerspectiveCamera(70, 1.5, 0.03, 20); pan.cam.rotation.order = 'YXZ';
     var b = panBuild(); pan.scene.add(b.group); pan.scr = b.scr; pan.heads = b.heads;
-    pan.ready = true;
+    pan.group = b.group; pan.ready = true; $('#cstyle').textContent = 'Cockpit: ' + (cockStyle === '747' ? '747' : 'A320');
+  }
+  function panRebuild(){
+    pan.scene.remove(pan.group); var b = panBuild(); pan.scene.add(b.group); pan.group = b.group; pan.scr = b.scr; pan.heads = b.heads; pan.lastScr = 0;
+    $('#cstyle').textContent = 'Cockpit: ' + (cockStyle === '747' ? '747' : 'A320');
   }
 
   // Lite kart: viser hvor i verden flyet er
@@ -2007,7 +2040,9 @@
     function up(e){ delete ptr[e.pointerId]; }
     el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
     el.addEventListener('wheel', function(e){ if(!pan.on) return; e.preventDefault(); pan.fov = clampN(pan.fov + e.deltaY*0.03, 35, 95); }, {passive:false});
-    document.getElementById('cpan').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b && pan.on) panGoto(b.dataset.v); });
+    document.getElementById('cpan').addEventListener('click', function(e){ var b = e.target.closest('button'); if(!b || !pan.on) return;
+      if(b.dataset.v === 'style'){ cockStyle = cockStyle === '747' ? '320' : '747'; try{ localStorage.setItem('flyradar_cstyle', cockStyle); }catch(_){} panRebuild(); return; }
+      panGoto(b.dataset.v); });
   })();
 
   var cRz = 0;
