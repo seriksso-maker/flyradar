@@ -230,7 +230,7 @@
   #air{width:100%;min-width:0}
   .dock{position:absolute;z-index:500;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);display:flex;justify-content:space-around;padding:8px 6px 6px;background:rgba(18,26,34,.94);border:1px solid var(--line);border-radius:28px}
   .dock button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:#e8eef3;font:500 13px var(--ui);padding:4px 8px;min-height:0;flex:1}
-  .dock button.on{color:var(--amber)}
+  .dock button.on,.dock button.flt{color:var(--amber)}
   .dock svg{display:block}
   .fab2{bottom:auto!important;left:auto!important;right:10px;top:calc(10px + env(safe-area-inset-top));width:44px;height:44px;background:rgba(18,26,34,.85)}
   .fab{position:absolute;z-index:500;left:12px;bottom:calc(92px + env(safe-area-inset-bottom));width:48px;height:48px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;background:rgba(60,70,78,.88);border:0;color:#e8eef3}
@@ -310,7 +310,10 @@
   <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly"></div>
 </div>
 <div class="sheet" id="shAir" hidden>
-  <h3>Flyselskap</h3>
+  <h3>Filter</h3>
+  <label style="display:block;font-size:12px;color:var(--mute);margin-bottom:6px">Type</label>
+  <div class="chips2" id="kindChips" style="grid-template-columns:repeat(3,1fr)"><button type="button" data-k="">Alle</button><button type="button" data-k="plane">Fly</button><button type="button" data-k="heli">Helikopter</button></div>
+  <label for="air" style="display:block;font-size:12px;color:var(--mute);margin:12px 0 6px">Flyselskap</label>
   <select id="air" aria-label="Flyselskap"><option value="">Alle flyselskap</option></select>
 </div>
 <div class="sheet" id="shSet" hidden>
@@ -333,7 +336,7 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
-  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bHeli" style="grid-column:1/3">Helikoptre på kartet</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
   <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
@@ -360,7 +363,7 @@
   <button type="button" id="dQ"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Søk</button>
   <button type="button" id="dSet"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Innstillinger</button>
   <button type="button" id="dMap"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Kart</button>
-  <button type="button" id="dAir"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>Flyselskap</button>
+  <button type="button" id="dAir"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>Filter</button>
   <button type="button" id="dSky"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h3l1.5-2h9L18 8h3v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>Kamera</button>
 </nav>
 <button id="diag" type="button" hidden>Test</button>
@@ -417,7 +420,7 @@
   try{ var hs = JSON.parse(localStorage.getItem('flyblikk_home')||'null'); if(hs && isFinite(hs[0]) && isFinite(hs[1])) HOME = hs; }catch(e){}
   var HELI_TYPES = /^(H60|S61|S92|S76|S70|EC20|EC25|EC30|EC35|EC45|EC55|EC75|A109|A119|A139|A169|A189|AS32|AS35|AS50|AS55|AS65|B06|B407|B412|B429|B505|R22|R44|R66|H135|H145|H160|H175|NH90|MI8|MI17|KA32|CH47|UH1|AW09|EN28|BK17|MD52|MD60|MD90|LYNX|PUMA|NH10|SK61|SK76|SK92|GAZL|HUEY|HUCO|HUR|TIGR|APCH)$/;
   function isHeli(d){ return !!d && (d.cat==='A7' || HELI_TYPES.test((d.type||'').toUpperCase())); }
-  var showHeli = true; try{ showHeli = localStorage.getItem('flyblikk_heli') !== '0'; }catch(e){}
+  var kindSel = ''; try{ kindSel = localStorage.getItem('flyblikk_kind') || ''; if(kindSel!=='plane' && kindSel!=='heli') kindSel = ''; }catch(e){}
   var HELI_SVG = '<g fill="currentColor" stroke="#000" stroke-width=".6" stroke-linejoin="round"><rect x="11.1" y="12" width="1.8" height="9.5" rx=".6"/><path d="M9.6 20.2h4.8v1.6H9.6z"/><ellipse cx="12" cy="10" rx="3.3" ry="4.4"/></g><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".9"><path d="M3 4.5l18 11M21 4.5L3 15.5"/></g><circle cx="12" cy="10" r="1.3" fill="#0a1017"/>';
   var PLANE_PATH = 'M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z';
 
@@ -942,7 +945,7 @@
 
   function matches(d){
     if(d.ground && !showGround && d.hex!==sel) return false;
-    if(!showHeli && isHeli(d) && d.hex!==sel) return false;
+    if(kindSel && d.hex!==sel && (kindSel==='heli') !== isHeli(d)) return false;
     if(airSel && d.hex!==sel && airOf(d)!==airSel) return false;
     if(!filter) return true;
     return (d.call+' '+d.reg+' '+d.type+' '+d.hex).toLowerCase().indexOf(filter)!==-1;
@@ -2498,9 +2501,19 @@
     planes.forEach(function(p,hex){ draw(hex); });
     if($('#dot').className==='ok') setStat('ok', SRC[src].label+' · '+visibleCount()+' fly · '+new Date().toLocaleTimeString('nb-NO')+lastHint);
   }
+  function kindApply(){
+    document.querySelectorAll('#kindChips button').forEach(function(b){ b.classList.toggle('on', b.dataset.k === kindSel); });
+    try{ localStorage.setItem('flyblikk_kind', kindSel); }catch(e){}
+    var d = $('#dAir'); if(d) d.classList.toggle('flt', !!(kindSel || airSel));
+  }
+  $('#kindChips').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    kindSel = b.dataset.k; kindApply(); redrawAll();
+  });
+  kindApply();
   $('#air').addEventListener('change', function(e){
     airSel = e.target.value; airSig = ''; e.target.className = airSel ? 'on' : '';
-    redrawAll();
+    kindApply(); redrawAll();
   });
   function closeSheets(){ ['#shSet','#shMap','#shQ','#shAir','#shCast'].forEach(function(s){ $(s).hidden = true; }); ['#dSet','#dMap','#dQ','#dAir'].forEach(function(b){ $(b).classList.remove('on'); }); }
   function openSheet(id, btn){ var s = $(id), was = !s.hidden; closeSheets(); if(!was){ s.hidden = false; $(btn).classList.add('on'); } }
@@ -2760,13 +2773,6 @@
     clearInterval(atcTimer);
     if(atcOn){ atcDraw(); atcTimer = setInterval(atcDraw, 1000); }
   }
-  function heliApply(){
-    $('#bHeli').classList.toggle('on', showHeli);
-    try{ localStorage.setItem('flyblikk_heli', showHeli ? '1' : '0'); }catch(e){}
-    planes.forEach(function(p){ if(p.d){ p.ikey = null; draw(p.d.hex); } });
-  }
-  $('#bHeli').onclick = function(){ showHeli = !showHeli; heliApply(); };
-  heliApply();
   $('#bRsc').onclick = function(){ rscOn = !rscOn; rscApply(); };
   rscApply();
   $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
