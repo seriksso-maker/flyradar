@@ -282,7 +282,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 19:50 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 20:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -1657,7 +1657,7 @@
     pl(oh, 0.9, 0.45, 0, Y1-0.132, -0.95, Math.PI/2, 0, 0, true);
     // Sikringspaneler og sidekonsoller
     var cb = ptex(256, 256, function(c, w, h){ c.fillStyle = '#16191d'; c.fillRect(0, 0, w, h); for(var r=0;r<12;r++) for(var k=0;k<12;k++){ var col = Math.random()<.08 ? '#d9a82a' : (Math.random()<.07 ? '#c04a3a' : '#e9ecef'); c.fillStyle = '#050607'; c.fillRect(8+k*20, 8+r*20, 14, 14); c.fillStyle = col; c.beginPath(); c.arc(15+k*20, 15+r*20, 4.5, 0, 7); c.fill(); } });
-    pl(cb, 0.55, 0.5, -(X-0.027), 0.35, 0.45, 0, Math.PI/2, 0, true); pl(cb, 0.55, 0.5, (X-0.027), 0.35, 0.45, 0, -Math.PI/2, 0, true);
+    // (sikringspaneler fjernet: bakvinduer)
     var sc = ptex(256, 256, function(c, w, h){ c.fillStyle = '#20252b'; c.fillRect(0, 0, w, h); c.fillStyle = '#0a0c0f'; c.fillRect(16, 20, 224, 90); c.fillStyle = '#2d6a3a'; c.fillRect(24, 28, 208, 74); c.fillStyle = '#d6dde4'; c.font = '700 14px monospace'; c.fillText('MCDU  FMGC', 40, 52); c.fillStyle = '#47ff6a'; for(var i=0;i<4;i++) c.fillText('─ ─ ─ ─ ─ ─ ─ ─', 34, 70+i*13);
       for(var r=0;r<5;r++) for(var k=0;k<8;k++){ c.fillStyle = '#0d0f12'; c.fillRect(18+k*28, 124+r*26, 22, 18); c.fillStyle = '#6a727d'; c.fillRect(20+k*28, 126+r*26, 18, 4); } });
     pl(sc, 0.4, 0.4, -(X-0.032), -0.28, -0.55, -0.9, Math.PI/2, 0, true); pl(sc, 0.4, 0.4, (X-0.032), -0.28, -0.55, -0.9, -Math.PI/2, 0, true);
@@ -1678,7 +1678,8 @@
     [-0.53, 0.53].forEach(function(x){ var sv = new T.Mesh(new T.BoxGeometry(0.86, 0.02, 0.2), new T.MeshLambertMaterial({color:0x25282d})); sv.position.set(x, 0.7, ZF+0.1); sv.rotation.x = -0.35; g.add(sv); });
     // Bakdør og jump-seat
     var dr = ptex(256, 512, function(c, w, h){ c.fillStyle = '#2a2f36'; c.fillRect(0, 0, w, h); c.fillStyle = '#0d0f12'; c.fillRect(70, 50, 116, 120); c.fillStyle = '#222831'; c.fillRect(76, 56, 104, 108); c.fillStyle = '#7d868f'; c.fillRect(190, 250, 28, 8); c.strokeStyle = '#4b535e'; c.strokeRect(20.5, 20.5, 215, 470); });
-    pl(dr, 0.7, 1.4, 0, -0.38, ZB-0.012, 0, Math.PI, 0, false);
+    [-0.56, 0.56].forEach(function(x){ pl(gl, 0.98, 0.74, x, 0.35, ZB-0.012, 0, Math.PI, 0, true, 1); });
+    pl(gl, 0.73, 0.74, -(X-0.006), 0.35, 0.485, 0, Math.PI/2, 0, true, 1); pl(gl, 0.73, 0.74, (X-0.006), 0.35, 0.485, 0, -Math.PI/2, 0, true, 1);
     var js = new T.Mesh(new T.BoxGeometry(0.44, 0.1, 0.4), new T.MeshLambertMaterial({color:0x2b2f36})); js.position.set(0, -0.66, 0.75); g.add(js);
     var jb = new T.Mesh(new T.BoxGeometry(0.44, 0.5, 0.08), new T.MeshLambertMaterial({color:0x2b2f36})); jb.position.set(0, -0.35, 0.9); g.add(jb);
   }
@@ -1697,12 +1698,14 @@
     // Sidevegger med vindu
     [-1, 1].forEach(function(sx){
       var sh = new T.Shape(); rectP(sh, ZF, Y0, ZB, Y1);
-      sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true));
+      sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true), rectP(null, 0.12, -0.02, 0.85, 0.72, true));
       var sw = wall(sh, 0x23282f); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
     });
     box(2*X, 0.02, ZB-ZF, 0x14171b, 0, Y0, (ZB+ZF)/2);                 // gulv
     box(2*X, 0.02, ZB-ZF, 0x1b1f24, 0, Y1, (ZB+ZF)/2);                 // tak
-    box(2*X, Y1-Y0, 0.02, 0x1a1e23, 0, (Y1+Y0)/2, ZB);                 // bakvegg
+    var bs = new T.Shape(); rectP(bs, -X, Y0, X, Y1); bs.holes.push(rectP(null, -1.05, -0.02, -0.07, 0.72, true), rectP(null, 0.07, -0.02, 1.05, 0.72, true));
+    var bw = wall(bs, 0x1a1e23); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
+    [-0.56, 0.56].forEach(function(bx){ box(0.98, 0.03, 0.03, 0x0e1115, bx, 0.725, ZB-0.01); box(0.98, 0.03, 0.03, 0x0e1115, bx, -0.03, ZB-0.01); });
     box(0.9, 0.12, 0.45, 0x2b323b, 0, Y1-0.07, -0.95);                 // overheadpanel
     // Dashbord og glareshield
     box(2*X-0.02, 0.5, 0.58, 0x181c21, 0, -0.55, ZF+0.31);
@@ -1726,7 +1729,7 @@
     var rnd = 7; function rr2(){ rnd = (rnd*9301 + 49297) % 233280; return rnd/233280; }
     [-1,1].forEach(function(sx){
       box(0.03, 0.5, 0.7, 0x1a1e23, sx*(X-0.02), -0.55, -0.55);               // sidekonsoll
-      box(0.02, 0.5, 0.55, 0x15181c, sx*(X-0.015), 0.35, 0.45);              // sikringspanel
+      box(0.03, 0.04, 0.7, 0x0e1115, sx*(X-0.01), 0.725, 0.5);
       box(0.05, 0.05, 0.9, 0x0f1216, sx*(X-0.03), 0.76, -0.1);               // sol­skjerm-liste
     });
     // Vindusrammer
