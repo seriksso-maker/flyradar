@@ -158,6 +158,9 @@
   .lnks span{width:100%;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
   .lnks a{padding:6px 10px;border:1px solid var(--line);border-radius:8px;color:#59d0ff;font-size:13px;text-decoration:none}
   .lnks a:hover{border-color:#59d0ff}
+  .gt{min-width:34px;padding:3px 6px;border-radius:10px;text-align:center;font:700 14px var(--mono);color:#fff;border:1px solid rgba(255,255,255,.35);box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:.9;margin:6px}
+  .gw{display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 3px #000)}
+  .gw b{font:700 12px var(--mono);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:-4px}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -298,7 +301,7 @@
   <h3 style="margin-top:14px">Hopp til område</h3>
   <div class="chips2" id="regChips"><button type="button" data-r="54,12,5">Europa</button><button type="button" data-r="39,-98,4">Nord-Amerika</button><button type="button" data-r="40.7,-74,7">New York</button><button type="button" data-r="34,-118.2,7">Los Angeles</button><button type="button" data-r="41.9,-87.9,7">Chicago</button><button type="button" data-r="25.8,-80.3,7">Miami</button></div>
   <h3 style="margin-top:14px">Vær</h3>
-  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button></div>
+  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button><button type="button" id="bWind">Vind (kt)</button><button type="button" id="bTemp">Temperatur</button></div>
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
 </div>
 
@@ -2331,6 +2334,50 @@
   }
   $('#bClouds').onclick = function(){ cloudsOn = !cloudsOn; try{ localStorage.setItem('flyradar_clouds', cloudsOn ? '1' : '0'); }catch(e){} cloudsApply(); };
   cloudsApply();
+  /* Vind og temperatur som rutenett over kartet (Open-Meteo, modelldata) */
+  map.createPane('wxg'); map.getPane('wxg').style.zIndex = 260; map.getPane('wxg').style.pointerEvents = 'none';
+  var gridMode = '', gridGroup = L.layerGroup(), gridTimer = null, gridDeb = null, gridSeq = 0;
+  try{ gridMode = localStorage.getItem('flyblikk_grid') || ''; if(gridMode!=='wind' && gridMode!=='temp') gridMode = ''; }catch(e){}
+  function tempCol(t){ var k = Math.max(0, Math.min(1, (t+25)/60)); return 'hsl('+Math.round(240-240*k)+',80%,'+(k>.35&&k<.65?'42%':'46%')+')'; }
+  function windCol(v){ return v<10?'#59d0ff':v<20?'#6be08f':v<30?'#ffd23f':v<45?'#ff9a3c':'#ff4d4d'; }
+  function gridLoad(){
+    if(!gridMode) return;
+    var b = map.getBounds(), sz = map.getSize(), cols = Math.max(3, Math.min(8, Math.round(sz.x/105))), rows = Math.max(3, Math.min(8, Math.round(sz.y/105)));
+    var la = [], lo = [];
+    for(var r=0; r<rows; r++) for(var c=0; c<cols; c++){
+      la.push((b.getSouth() + (b.getNorth()-b.getSouth())*(r+.5)/rows).toFixed(2));
+      lo.push((b.getWest() + (b.getEast()-b.getWest())*(c+.5)/cols).toFixed(2));
+    }
+    var seq = ++gridSeq, mode = gridMode;
+    wxGet('https://api.open-meteo.com/v1/forecast?latitude='+la.join(',')+'&longitude='+lo.join(',')+'&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=kn&timezone=UTC', 600000).then(function(j){
+      if(seq !== gridSeq || mode !== gridMode) return;
+      var arr = Array.isArray(j) ? j : [j]; gridGroup.clearLayers();
+      arr.forEach(function(p){
+        var cur = p && p.current; if(!cur) return;
+        var html;
+        if(mode === 'temp'){
+          var t = cur.temperature_2m; if(t==null) return;
+          html = '<div class="gt" style="background:'+tempCol(t)+'">'+Math.round(t)+'°</div>';
+        } else {
+          var v = cur.wind_speed_10m, d = cur.wind_direction_10m; if(v==null) return;
+          html = '<div class="gw" style="color:'+windCol(v)+'"><svg width="30" height="30" viewBox="0 0 24 24" style="transform:rotate('+Math.round((d||0)+180)+'deg)"><path d="M12 2l6 15-6-3-6 3z" fill="currentColor" stroke="#000" stroke-width="1" stroke-linejoin="round"/></svg><b>'+Math.round(v)+'</b></div>';
+        }
+        L.marker([p.latitude, p.longitude], {pane:'wxg', interactive:false, keyboard:false, icon:L.divIcon({className:'plane', html:html, iconSize:[40,40], iconAnchor:[20,20]})}).addTo(gridGroup);
+      });
+      radarNote((mode==='temp' ? 'Temperatur' : 'Vind (retning og knop)') + ' ved bakken · modell fra Open-Meteo, nå');
+    }).catch(function(){ radarNote('Fikk ikke hentet værdata'); });
+  }
+  function gridApply(){
+    $('#bWind').classList.toggle('on', gridMode==='wind'); $('#bTemp').classList.toggle('on', gridMode==='temp');
+    try{ localStorage.setItem('flyblikk_grid', gridMode); }catch(e){}
+    clearInterval(gridTimer);
+    if(gridMode){ if(!map.hasLayer(gridGroup)) gridGroup.addTo(map); gridLoad(); gridTimer = setInterval(gridLoad, 600000); }
+    else { gridSeq++; gridGroup.clearLayers(); if(map.hasLayer(gridGroup)) map.removeLayer(gridGroup); }
+  }
+  $('#bWind').onclick = function(){ gridMode = gridMode==='wind' ? '' : 'wind'; gridGroup.clearLayers(); gridApply(); };
+  $('#bTemp').onclick = function(){ gridMode = gridMode==='temp' ? '' : 'temp'; gridGroup.clearLayers(); gridApply(); };
+  map.on('moveend', function(){ if(!gridMode) return; clearTimeout(gridDeb); gridDeb = setTimeout(gridLoad, 700); });
+  gridApply();
   /* TV-modus + veiledning for Chromecast/skjermdeling */
   var wakeLock = null;
   $('#regChips').addEventListener('click', function(e){
