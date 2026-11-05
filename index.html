@@ -138,7 +138,12 @@
   .cmsg{position:absolute;z-index:4;left:50%;top:30%;transform:translateX(-50%);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;text-align:center;max-width:80%}
   #chint{position:absolute;z-index:4;left:50%;top:14%;transform:translateX(-50%);padding:8px 12px;background:rgba(10,16,23,.85);border:1px solid var(--line);border-radius:6px;font-size:13px;text-align:center}
   #cclose{position:absolute;z-index:5;top:10px;right:10px}
-  #cpil{position:absolute;z-index:5;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
+  #c3d{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:none}
+  #cpan{position:absolute;z-index:6;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;max-width:96vw;overflow-x:auto}
+  #cpan[hidden]{display:none}
+  #cpan button{min-height:34px;padding:4px 10px;font-size:12px;background:rgba(10,16,23,.8);white-space:nowrap}
+  #cpan button.on{border-color:var(--amber);color:var(--amber)}
+  #cpil{position:absolute;z-index:6;top:10px;left:10px;opacity:.85;min-height:32px;padding:4px 10px;font-size:12px}
   #air{min-width:190px;max-width:100%}
   #air.on{border-color:var(--amber);color:var(--amber)}
   .photo{display:block;width:100%;max-height:150px;object-fit:cover;border-bottom:1px solid var(--line)}
@@ -277,7 +282,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-01 22:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 18:40 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -334,11 +339,13 @@
 <div id="cock" hidden>
   <div id="cmap"></div>
   <canvas id="cpit"></canvas>
+  <canvas id="c3d" hidden></canvas>
   <div class="cattr">Bilder © Esri World Imagery · Terreng: AWS/Mapzen · MapLibre</div>
   <div id="cmsg" class="cmsg" hidden></div>
   <div id="chint" hidden>Snu mobilen til liggende for best utsikt</div>
   <button id="cclose" type="button">Tilbake til kart</button>
-  <button id="cpil" type="button">Pilotene: på</button>
+  <button id="cpil" type="button">Se deg rundt</button>
+  <div id="cpan" hidden><button data-v="front">Fram</button><button data-v="capt">Kaptein</button><button data-v="fo">Styrmann</button><button data-v="back">Bak</button><button data-v="pano">Panorama</button></div>
 </div>
 
 <div class="status">
@@ -1082,7 +1089,7 @@
   map.on('click', function(){ if(sel) select(null); });
 
   /* ---------- Cockpit-visning: 3D-terreng sett fra flyet + tegnet cockpit ---------- */
-  var cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
+  var pan = {on:false}, cockOn = false, cmap = null, cockRaf = 0, mlLoading = null, cockLast = 0, cs = null, cctx = null, cL = null, cReady = false, cTileT = 0;
   var ML_URL = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl';
 
   function loadMapLibre(){
@@ -1148,7 +1155,8 @@
     cv.width = Math.round(cL.W*dpr); cv.height = Math.round(cL.H*dpr);
     cv.style.width = cL.W+'px'; cv.style.height = cL.H+'px';
     cctx = cv.getContext('2d'); cctx.setTransform(dpr,0,0,dpr,0,0);
-    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(cL.vfov); cmap.triggerRepaint(); }catch(e){} }
+    if(pan.on) panResize();
+    if(cmap){ try{ cmap.resize(); cmap.setVerticalFieldOfView(pan.on ? pan.fov : cL.vfov); cmap.triggerRepaint(); }catch(e){} }
     cs && (cs.bg = null);
   }
 
@@ -1159,7 +1167,7 @@
     try{ var re = document.documentElement.requestFullscreen; if(re && !document.fullscreenElement) re.call(document.documentElement).catch(function(){}); }catch(e){}
     try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(function(){}); }catch(e){}
     var d = p.d;
-    $('#cpil').textContent = 'Pilotene: ' + (cockBack ? 'på' : 'av');
+    $('#cpil').textContent = 'Se deg rundt'; if(pan.on) panOff();
     cs = {hdg:d.trk||0, roll:0, pitch:attitude(d).pitch, spd:d.ias!=null?d.ias:(d.gs||0), alt:d.alt||0, vs:d.vr||0, prevHdg:d.trk||0, bg:null};
     var msg = $('#cmsg'); msg.textContent = 'Laster 3D-kart …'; msg.hidden = false;
     cResize();
@@ -1168,7 +1176,7 @@
       if(!cmap){
         cmap = new maplibregl.Map({
           container:'cmap', interactive:false, attributionControl:false, fadeDuration:0, pixelRatio:Math.min(window.devicePixelRatio||1, 1.5),
-          center:[p.lon0, p.lat0], zoom:11, pitch:80, bearing:0, maxPitch:120, minPitch:0, canvasContextAttributes:{antialias:false},
+          center:[p.lon0, p.lat0], zoom:11, pitch:80, bearing:0, maxPitch:180, minPitch:0, canvasContextAttributes:{antialias:false},
           maxTileCacheSize:200,
           style:{
             version:8,
@@ -1206,7 +1214,7 @@
   function cockLoop(ts){
     if(!cockOn) return;
     cockRaf = requestAnimationFrame(cockLoop);
-    if(ts - cockLast < 40) return;      // ca. 25 bilder i sekundet
+    if(ts - cockLast < (pan.on ? 15 : 40)) return;      // ca. 25 bilder i sekundet
     var dt = Math.min(0.2, (ts - cockLast)/1000 || 0.04); cockLast = ts;
     var p = planes.get(sel), msg = $('#cmsg');
     if(!p){ msg.textContent = 'Signalet fra flyet er borte'; msg.hidden = false; return; }
@@ -1238,12 +1246,14 @@
         if(wantFlat !== cs.flat){ cs.flat = wantFlat; try{ cmap.setTerrain(wantFlat ? null : {source:'dem', exaggeration:1}); }catch(e){} }
         try{ cmap.setCenterClampedToGround(false); }catch(e){}
         if(altM > 3500) altM = 3500;
-        var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
-        var co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll);
+        var co;
+        if(pan.on){ var pc = panStep(dt); co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, pc.b, 90 + pc.e, pc.r); }
+        else { var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
+          co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll); }
         cmap.jumpTo(co);
       }catch(e){ if(!cs.err){ cs.err = 1; msg.textContent = '3D-feil: ' + e.message; msg.hidden = false; } }
     }
-    cDraw(d, pos);
+    if(pan.on) panRender(d, pos, ts); else cDraw(d, pos);
   }
 
   /* ----- Tegning av cockpit ----- */
@@ -1511,8 +1521,7 @@
 
 
   /* Pilotene sett bakfra (kapteinen til venstre, styrmannen til høyre) */
-  var cockBack = true;
-  try{ cockBack = localStorage.getItem('flyradar_pilots') !== '0'; }catch(e){}
+  var cockBack = false;
   function drawPilot(c, hx, hy, s, stripes){
     c.save();
     var W = cL.W, H = cL.H;
@@ -1586,6 +1595,226 @@
     drawInfo(c, L.info, d, pos);
   }
 
+  /* ----- Panorama: se deg rundt i cockpiten (three.js) ----- */
+  var THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', threeLoading = null;
+  function loadThree(){
+    if(window.THREE) return Promise.resolve();
+    if(threeLoading) return threeLoading;
+    threeLoading = new Promise(function(res, rej){
+      var sc = document.createElement('script'); sc.src = THREE_URL; sc.onload = res;
+      sc.onerror = function(){ threeLoading = null; rej(new Error('Kunne ikke laste 3D-biblioteket for panorama.')); };
+      document.head.appendChild(sc);
+    });
+    return threeLoading;
+  }
+  var PAN_VIEWS = {
+    front:{eye:[0,0.05,0.1],  yaw:0,   pitch:0,  auto:false},
+    capt: {eye:[0.15,0.12,0.7], yaw:-51, pitch:-4, auto:false},
+    fo:   {eye:[-0.15,0.12,0.7], yaw:51, pitch:-4, auto:false},
+    back: {eye:[0,0.15,0.85], yaw:0,   pitch:-3, auto:false},
+    pano: {eye:[0,0.1,0.4],   yaw:null, pitch:0, auto:true}
+  };
+  function mkTex(w, h){ var cv = document.createElement('canvas'); cv.width = w; cv.height = h; var t = new THREE.CanvasTexture(cv); t.minFilter = THREE.LinearFilter; return {cv:cv, tex:t, ctx:cv.getContext('2d')}; }
+
+  function panBuild(){
+    var T = THREE, g = new T.Group();
+    function mat(c){ return new T.MeshLambertMaterial({color:c}); }
+    function box(w, h, d, c, x, y, z, parent){ var m = new T.Mesh(new T.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); (parent||g).add(m); return m; }
+    function wall(shape, c){ return new T.Mesh(new T.ShapeGeometry(shape), new T.MeshLambertMaterial({color:c, side:T.DoubleSide})); }
+    function rectP(s, x0, y0, x1, y1, hole){ var p = hole ? new T.Path() : s; p.moveTo(x0, y0); p.lineTo(x1, y0); p.lineTo(x1, y1); p.lineTo(x0, y1); p.lineTo(x0, y0); return p; }
+    var X = 1.25, ZF = -1.2, ZB = 0.95, Y0 = -1.1, Y1 = 0.8;
+    // Frontvegg med to vinduer
+    var s = new T.Shape(); rectP(s, -X, Y0, X, Y1);
+    s.holes.push(rectP(null, -1.02, -0.02, -0.04, 0.72, true), rectP(null, 0.04, -0.02, 1.02, 0.72, true));
+    var fw = wall(s, 0x20252c); fw.position.z = ZF; g.add(fw);
+    // Sidevegger med vindu
+    [-1, 1].forEach(function(sx){
+      var sh = new T.Shape(); rectP(sh, ZF, Y0, ZB, Y1);
+      sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true));
+      var sw = wall(sh, 0x23282f); sw.rotation.y = Math.PI/2; sw.position.x = sx*X; g.add(sw);
+    });
+    box(2*X, 0.02, ZB-ZF, 0x14171b, 0, Y0, (ZB+ZF)/2);                 // gulv
+    box(2*X, 0.02, ZB-ZF, 0x1b1f24, 0, Y1, (ZB+ZF)/2);                 // tak
+    box(2*X, Y1-Y0, 0.02, 0x1a1e23, 0, (Y1+Y0)/2, ZB);                 // bakvegg
+    box(0.9, 0.12, 0.45, 0x2b323b, 0, Y1-0.07, -0.95);                 // overheadpanel
+    for(var i=0;i<6;i++) box(0.09, 0.012, 0.09, i%2?0x7a5a22:0x39424d, -0.35+i*0.14, Y1-0.135, -0.95);
+    // Dashbord og glareshield
+    box(2*X-0.02, 0.5, 0.58, 0x181c21, 0, -0.55, ZF+0.31);
+    box(2*X-0.02, 0.05, 0.12, 0x2a2f37, 0, -0.07, ZF+0.1);
+    box(0.22, 0.9, 0.5, 0x1b2026, 0, -0.65, -0.35);                    // sentersokkel
+    box(0.18, 0.04, 0.34, 0x2d343d, 0, -0.2, -0.35);                   // gasshendler
+    for(i=0;i<2;i++) box(0.03, 0.03, 0.2, 0x3a3f47, -0.05+i*0.1, -0.15, -0.36);
+    // Skjermer
+    var scr = {};
+    function screen(key, w, h, x, tw, th){
+      var t = mkTex(tw, th); scr[key] = t;
+      var m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({map:t.tex}));
+      m.position.set(x, -0.15, ZF+0.62); m.rotation.x = -0.3; g.add(m);
+      var fr = new T.Mesh(new T.PlaneGeometry(w+0.03, h+0.03), new T.MeshBasicMaterial({color:0x07090b}));
+      fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.translateZ(-0.002); g.add(fr);
+    }
+    screen('pfdL', 0.29, 0.29, -0.8, 256, 256); screen('ndL', 0.29, 0.29, -0.49, 256, 256);
+    screen('info', 0.30, 0.24, 0, 320, 256);
+    screen('ndR', 0.29, 0.29, 0.49, 256, 256); screen('pfdR', 0.29, 0.29, 0.8, 256, 256);
+    // Piloter
+    var heads = [];
+    function pilot(px, stripes, cap){
+      var P = new T.Group(); P.position.set(px, 0, 0.18); g.add(P);
+      var shirt = 0xf1f3f5, skin = 0xd9a98a, dark = 0x1c2230;
+      box(0.46, 0.08, 0.5, 0x2a2f37, 0, -0.78, 0.1, P);                  // sete
+      box(0.46, 0.8, 0.1, 0x2a2f37, 0, -0.4, 0.34, P);                   // ryggstøtte
+      box(0.14, 0.04, 0.1, 0x2a2f37, 0, 0.0, 0.34, P);                   // nakkestøtte
+      box(0.4, 0.5, 0.2, shirt, 0, -0.38, 0.2, P);                       // overkropp
+      box(0.5, 0.1, 0.2, shirt, 0, -0.16, 0.2, P);                       // skuldre
+      box(0.05, 0.3, 0.015, dark, 0, -0.34, 0.1, P);                     // slips
+      var hd = new T.Group(); hd.position.set(0, 0.04, 0.2); P.add(hd); heads.push(hd);
+      var h1 = new T.Mesh(new T.SphereGeometry(0.115, 20, 16), mat(skin)); hd.add(h1);
+      var hr = new T.Mesh(new T.SphereGeometry(0.12, 20, 12, 0, Math.PI*2, 0, Math.PI*0.5), mat(0x3a2a1c)); hr.position.set(0, 0.005, 0.015); hr.rotation.x = 0.35; hd.add(hr);
+      box(0.015, 0.015, 0.2, dark, 0, 0.1, 0.0, hd);                    // hodebøyle
+      [-1,1].forEach(function(e){ var c = new T.Mesh(new T.CylinderGeometry(0.045, 0.045, 0.04, 14), mat(0x15181c)); c.rotation.z = Math.PI/2; c.position.set(e*0.12, 0.01, 0); hd.add(c); });
+      if(cap){ var cp = new T.Mesh(new T.CylinderGeometry(0.13, 0.14, 0.07, 20), mat(0x10141c)); cp.position.set(0, 0.11, -0.01); hd.add(cp); var br = new T.Mesh(new T.BoxGeometry(0.2, 0.012, 0.09), mat(0x0a0d12)); br.position.set(0, 0.085, -0.15); hd.add(br); }
+      [-1,1].forEach(function(e){
+        var a = new T.Mesh(new T.BoxGeometry(0.075, 0.075, 0.42), mat(shirt)); a.position.set(e*0.26, -0.3, -0.03); a.rotation.x = 0.35; P.add(a);
+        var hand = new T.Mesh(new T.SphereGeometry(0.05, 10, 8), mat(skin)); hand.position.set(e*0.26, -0.4, -0.22); P.add(hand);
+        for(var k=0;k<stripes;k++) box(0.1, 0.012, 0.03, 0xd8b04a, e*0.27, -0.115+0.0, 0.2-0.05*k+0.05, P).position.y = -0.105;
+        var lg = new T.Mesh(new T.BoxGeometry(0.15, 0.13, 0.55), mat(0x1a2030)); lg.position.set(e*0.12, -0.66, -0.12); P.add(lg);
+        box(0.12, 0.1, 0.18, 0x101216, e*0.12, -0.82, -0.44, P);
+      });
+      box(0.04, 0.3, 0.04, 0x2d343d, px < 0 ? -0.2 : 0.2, -0.55, -0.4, g);   // styrespak ved siden
+    }
+    pilot(-0.6, 4, true); pilot(0.6, 3, false);
+    g.add(new T.AmbientLight(0xffffff, 0.75));
+    var dl = new T.DirectionalLight(0xfff2dd, 0.6); dl.position.set(1, 2, 1); g.add(dl);
+    return {group:g, scr:scr, heads:heads};
+  }
+
+  function panInit(){
+    var T = THREE, cv = $('#c3d');
+    pan.r = new T.WebGLRenderer({canvas:cv, alpha:true, antialias:true});
+    pan.r.setClearColor(0x000000, 0);
+    pan.scene = new T.Scene();
+    pan.cam = new T.PerspectiveCamera(70, 1.5, 0.03, 20); pan.cam.rotation.order = 'YXZ';
+    var b = panBuild(); pan.scene.add(b.group); pan.scr = b.scr; pan.heads = b.heads;
+    pan.ready = true;
+  }
+
+  function panResize(){
+    if(!pan.ready || !cL) return;
+    var dpr = Math.min(window.devicePixelRatio||1, 1.5);
+    pan.r.setPixelRatio(dpr); pan.r.setSize(cL.W, cL.H, false);
+    pan.cam.aspect = cL.W/cL.H; pan.cam.fov = pan.fov; pan.cam.updateProjectionMatrix();
+  }
+
+  function panGoto(key){
+    var v = PAN_VIEWS[key]; if(!v) return;
+    pan.view = key;
+    pan.tgt = {eye:v.eye.slice(), yaw:(v.yaw==null ? pan.yaw : v.yaw), pitch:v.pitch};
+    pan.auto = v.auto;
+    var bs = document.querySelectorAll('#cpan button'); for(var i=0;i<bs.length;i++) bs[i].classList.toggle('on', bs[i].dataset.v === key);
+  }
+
+  function panOn(){
+    if(!pan.ready) panInit();
+    pan.on = true; pan.fov = 70; pan.yaw = 0; pan.pitch = 0; pan.eye = [0,0.05,0.1]; pan.tgt = null;
+    $('#c3d').hidden = false; $('#cpit').style.display = 'none'; $('#cpan').hidden = false;
+    $('#cpil').textContent = 'Frontvindu'; $('#chint').hidden = true;
+    panGoto('back'); panResize();
+    try{ cmap && cmap.setVerticalFieldOfView(pan.fov); }catch(e){}
+  }
+  function panOff(){
+    pan.on = false; pan.auto = false;
+    $('#c3d').hidden = true; $('#cpit').style.display = ''; $('#cpan').hidden = true;
+    $('#cpil').textContent = 'Se deg rundt';
+    cResize();
+  }
+  function togglePan(){
+    if(pan.on){ panOff(); return; }
+    var msg = $('#cmsg'); msg.textContent = 'Laster panorama …'; msg.hidden = false;
+    loadThree().then(function(){
+      msg.hidden = true; if(!cockOn) return;
+      try{ panOn(); }catch(e){ msg.textContent = 'Panorama krever WebGL: ' + e.message; msg.hidden = false; }
+    }).catch(function(e){ msg.textContent = e.message; msg.hidden = false; });
+  }
+
+  // Kamerastilling i verden: flyets stilling (kurs, stigning, krengning) sammensatt med blikkretningen (yaw/pitch)
+  function panBasis(hdg, th, ph){
+    var h = hdg*RAD, t = th*RAD, f = ph*RAD, ch = Math.cos(h), sh = Math.sin(h);
+    var F = [sh*Math.cos(t), ch*Math.cos(t), Math.sin(t)], R0 = [ch, -sh, 0];
+    var U0 = [R0[1]*F[2]-R0[2]*F[1], R0[2]*F[0]-R0[0]*F[2], R0[0]*F[1]-R0[1]*F[0]];
+    var cf = Math.cos(f), sf = Math.sin(f), R = [], U = [];
+    for(var i=0;i<3;i++){ R[i] = R0[i]*cf - U0[i]*sf; U[i] = U0[i]*cf + R0[i]*sf; }
+    return {F:F, R:R, U:U};
+  }
+  function panWorld(hdg, th, ph, yaw, pit){
+    var B = panBasis(hdg, th, ph), y = yaw*RAD, a = pit*RAD;
+    var l = [Math.sin(y)*Math.cos(a), Math.sin(a), Math.cos(y)*Math.cos(a)];          // (høyre, opp, frem)
+    var u = [-Math.sin(y)*Math.sin(a), Math.cos(a), -Math.cos(y)*Math.sin(a)];
+    var L = [], Uw = [];
+    for(var i=0;i<3;i++){ L[i] = l[0]*B.R[i] + l[1]*B.U[i] + l[2]*B.F[i]; Uw[i] = u[0]*B.R[i] + u[1]*B.U[i] + u[2]*B.F[i]; }
+    var Z = [0,0,1], d = L[2], Un = [Z[0]-L[0]*d, Z[1]-L[1]*d, Z[2]-L[2]*d], n = Math.hypot(Un[0], Un[1], Un[2]);
+    var bearing = Math.atan2(L[0], L[1])/RAD, elev = Math.asin(clampN(L[2], -1, 1))/RAD, roll = 0;
+    if(n > 1e-4){
+      Un = [Un[0]/n, Un[1]/n, Un[2]/n];
+      var Rn = [L[1]*Un[2]-L[2]*Un[1], L[2]*Un[0]-L[0]*Un[2], L[0]*Un[1]-L[1]*Un[0]];
+      roll = Math.atan2(Uw[0]*Rn[0]+Uw[1]*Rn[1]+Uw[2]*Rn[2], Uw[0]*Un[0]+Uw[1]*Un[1]+Uw[2]*Un[2])/RAD;
+    }
+    return {b:(bearing+360)%360, e:elev, r:roll};
+  }
+
+  function panStep(dt){
+    if(pan.auto){ pan.yaw += 14*dt; pan.tgt = pan.tgt && {eye:pan.tgt.eye, yaw:pan.yaw, pitch:pan.tgt.pitch}; }
+    if(pan.tgt){
+      var k = 1 - Math.pow(0.5, dt/0.15);
+      pan.yaw += angDiff(pan.yaw, pan.tgt.yaw)*k; pan.pitch += (pan.tgt.pitch - pan.pitch)*k;
+      for(var i=0;i<3;i++) pan.eye[i] += (pan.tgt.eye[i] - pan.eye[i])*k;
+    }
+    pan.yaw = ((pan.yaw + 540) % 360) - 180;
+    return panWorld(cs.hdg, cs.pitch, cs.roll, pan.yaw, pan.pitch);
+  }
+
+  function panRender(d, pos, ts){
+    var cam = pan.cam;
+    cam.position.set(pan.eye[0], pan.eye[1], pan.eye[2]);
+    cam.rotation.set(pan.pitch*RAD, -pan.yaw*RAD, 0);
+    if(Math.abs(cam.fov - pan.fov) > 0.01){ cam.fov = pan.fov; cam.updateProjectionMatrix(); try{ cmap.setVerticalFieldOfView(pan.fov); }catch(e){} }
+    for(var i=0;i<pan.heads.length;i++){ pan.heads[i].rotation.y = 0.18*Math.sin(ts/2600 + i*2.1); pan.heads[i].rotation.x = 0.04*Math.sin(ts/1900 + i); }
+    if(!pan.lastScr || ts - pan.lastScr > 120){
+      pan.lastScr = ts;
+      var S = pan.scr, rs = {x:7, y:7, w:242, h:242}, ri = {x:7, y:7, w:306, h:242};
+      drawPFD(S.pfdL.ctx, rs, d); drawPFD(S.pfdR.ctx, rs, d);
+      drawND(S.ndL.ctx, rs, d, pos); drawND(S.ndR.ctx, rs, d, pos);
+      drawInfo(S.info.ctx, ri, d, pos);
+      for(var k in S){ S[k].ctx.fillStyle = '#000'; S[k].tex.needsUpdate = true; }
+    }
+    pan.r.render(pan.scene, cam);
+  }
+
+  // Dra for å se deg rundt, klyp eller rull for å zoome
+  (function(){
+    var ptr = {}, el = document.getElementById('cock'), pd0 = 0, fov0 = 70;
+    function cnt(){ return Object.keys(ptr).length; }
+    el.addEventListener('pointerdown', function(e){
+      if(!pan.on || e.target.tagName === 'BUTTON') return;
+      ptr[e.pointerId] = {x:e.clientX, y:e.clientY};
+      try{ el.setPointerCapture(e.pointerId); }catch(_){}
+      pan.auto = false; pan.tgt = null; document.querySelectorAll('#cpan button').forEach(function(b){ b.classList.remove('on'); });
+      if(cnt() === 2){ var a = Object.keys(ptr).map(function(k){ return ptr[k]; }); pd0 = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); fov0 = pan.fov; }
+    });
+    el.addEventListener('pointermove', function(e){
+      var p = ptr[e.pointerId]; if(!p || !pan.on) return;
+      if(cnt() === 1){
+        var kdeg = pan.fov*(cL.W/cL.H)/cL.W; if(cL.H > cL.W) kdeg = pan.fov/cL.H;
+        pan.yaw -= (e.clientX - p.x)*kdeg; pan.pitch = clampN(pan.pitch + (e.clientY - p.y)*kdeg, -85, 85);
+      }
+      p.x = e.clientX; p.y = e.clientY;
+      if(cnt() === 2){ var a = Object.keys(ptr).map(function(k){ return ptr[k]; }), dd = Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); if(pd0 > 10) pan.fov = clampN(fov0*pd0/Math.max(dd, 10), 35, 95); }
+    });
+    function up(e){ delete ptr[e.pointerId]; }
+    el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    el.addEventListener('wheel', function(e){ if(!pan.on) return; e.preventDefault(); pan.fov = clampN(pan.fov + e.deltaY*0.03, 35, 95); }, {passive:false});
+    document.getElementById('cpan').addEventListener('click', function(e){ var b = e.target.closest('button'); if(b && pan.on) panGoto(b.dataset.v); });
+  })();
+
   var cRz = 0;
   function cResizeSoon(){
     if(!cockOn) return;
@@ -1596,7 +1825,7 @@
   window.addEventListener('orientationchange', function(){ setTimeout(cResizeSoon, 200); });
   try{ if(window.ResizeObserver) new ResizeObserver(cResizeSoon).observe($('#cock')); }catch(e){}
   $('#cclose').addEventListener('click', closeCockpit);
-  $('#cpil').addEventListener('click', function(){ cockBack = !cockBack; this.textContent = 'Pilotene: ' + (cockBack ? 'på' : 'av'); try{ localStorage.setItem('flyradar_pilots', cockBack ? '1' : '0'); }catch(e){} });
+  $('#cpil').addEventListener('click', function(){ togglePan(); });
 
   /* ---------- Oppdateringsløkke ---------- */
   // Én enkelt oppdateringsløkke: hver ny runde avbryter den forrige, og gamle svar ignoreres (gen)
