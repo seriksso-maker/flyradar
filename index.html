@@ -1607,8 +1607,8 @@
     }
     fallback();
     var ltex = new T.CanvasTexture(lc), lmat = mk(ltex), lg = new T.PlaneGeometry(3.4, 3.4);
-    var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.7, 14.0); lr.rotation.y = Math.PI/2; group.add(lr);
-    var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.7, 14.0); ll.rotation.y = -Math.PI/2; group.add(ll);
+    var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.4, 15.2); lr.rotation.y = Math.PI/2; group.add(lr);
+    var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.4, 15.2); ll.rotation.y = -Math.PI/2; group.add(ll);
     if(iata){
       var urls = ['https://pics.avs.io/al_square/256/256/'+iata+'.png', 'https://images.kiwi.com/airlines/128x128/'+iata+'.png'], n = 0;
       (function tryNext(){
@@ -1647,11 +1647,11 @@
     var sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(15.8, 8.2); sh.lineTo(15.8, 10.6); sh.lineTo(0, 6.4); sh.lineTo(0, 0);
     var wg = new T.ExtrudeGeometry(sh, {depth:.45, bevelEnabled:false}); wg.rotateX(Math.PI/2); wg.translate(0, .25, -3.2);
     var wr = add(wg, white, 1.6, -.9, 0), wl = add(wg, white, -1.6, -.9, 0); wl.scale.x = -1; wr.rotation.z = wl.rotation.z = 0; wr.rotation.z = .05; wl.rotation.z = -.05;
-    [wr, wl].forEach(function(w){ var tip = new T.Mesh(new T.BoxGeometry(.12, 1.7, 1.4), tail); tip.position.set((w===wr?1:-1)*17.2, 1.0, 12.6); g.add(tip); });
+    [wr, wl].forEach(function(w){ var tip = new T.Mesh(new T.BoxGeometry(.12, 1.7, 1.4), tail); tip.position.set((w===wr?1:-1)*17.3, 0.5, 6.4); g.add(tip); });
     var sh2 = new T.Shape(); sh2.moveTo(0, 0); sh2.lineTo(6.2, 3.2); sh2.lineTo(6.2, 5.0); sh2.lineTo(0, 3.6); sh2.lineTo(0, 0);
     var tg = new T.ExtrudeGeometry(sh2, {depth:.3, bevelEnabled:false}); tg.rotateX(Math.PI/2); tg.translate(0, .1, 0);
     var tpr = add(tg, white, .9, .6, 13.6), tpl = add(tg, white, -.9, .6, 13.6); tpl.scale.x = -1;
-    var fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(6.6, 0); fs.lineTo(3.4, 7.4); fs.lineTo(1.2, 7.4); fs.lineTo(0, 0);
+    var fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(6.6, 0); fs.lineTo(5.8, 7.4); fs.lineTo(3.4, 7.4); fs.lineTo(0, 0);
     var fg = new T.ExtrudeGeometry(fs, {depth:.4, bevelEnabled:false}); fg.translate(0, 0, -.2); fg.rotateY(-Math.PI/2);
     add(fg, tail, 0, 1.6, 11.2);
     [-1,1].forEach(function(e){
