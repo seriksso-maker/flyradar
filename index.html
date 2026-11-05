@@ -1181,6 +1181,7 @@
             sky:{'sky-color':'#3f86d6', 'horizon-color':'#d3e6f4', 'fog-color':'#dbe7ee', 'sky-horizon-blend':0.55, 'horizon-fog-blend':0.8, 'fog-ground-blend':0.55}
           }
         });
+        try{ cmap.setCenterClampedToGround(false); }catch(e){}
         cmap.on('error', function(ev){ cTileT = performance.now(); });
         cmap.once('load', function(){ $('#cmsg').hidden = true; });
       }
@@ -1233,8 +1234,10 @@
         var ground = null;
         try{ ground = cmap.queryTerrainElevation([pos[1], pos[0]]); }catch(e){}
         if(ground!=null){ altM = Math.max(altM, ground + (d.ground ? 6 : 25)); }
-        var wantFlat = (cs.alt||0)*0.3048 > 4000;
+        var wantFlat = (cs.alt||0)*0.3048 > 1500;
         if(wantFlat !== cs.flat){ cs.flat = wantFlat; try{ cmap.setTerrain(wantFlat ? null : {source:'dem', exaggeration:1}); }catch(e){} }
+        try{ cmap.setCenterClampedToGround(false); }catch(e){}
+        if(altM > 3500) altM = 3500;
         var elev = cs.pitch + cL.baseElev;                 // kameraets høydevinkel over horisonten
         var co = cmap.calculateCameraOptionsFromCameraLngLatAltRotation([pos[1], pos[0]], altM, cs.hdg, 90 + elev, cs.roll);
         cmap.jumpTo(co);
