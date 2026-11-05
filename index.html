@@ -218,10 +218,11 @@
   .lb{display:none;position:absolute;left:27px;top:7px;font:500 11px var(--mono);color:#cfe3f3;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;pointer-events:none}
   #map.labels .lb{display:block}
   .ap{position:relative;width:28px;height:28px;cursor:pointer}
-  .ap.maj::after{content:"";position:absolute;inset:6px;border-radius:50%;border:2px solid rgba(255,59,48,.8);animation:apPulse 2.4s ease-out infinite;pointer-events:none}
+  .ap.maj::after{content:"";position:absolute;inset:7px;border-radius:50%;border:2px solid rgba(255,59,48,.8);animation:apPulse 2.4s ease-out infinite;pointer-events:none}
   @keyframes apPulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(1.7);opacity:0}}
-  .ap i{position:absolute;inset:8px;background:#ff3b30;border:1px solid rgba(0,0,0,.55);border-radius:50%}
-  .ap b{display:none;position:absolute;left:25px;top:5px;font:600 10px var(--mono);color:#ff9d96;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
+  .ap i{position:absolute;inset:8.5px;background:#e5322a;border:1px solid rgba(0,0,0,.55);border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .ap i svg{width:8px;height:8px;display:block;transform:rotate(45deg)}
+  .ap b{display:none;position:absolute;left:23px;top:6px;font:600 10px var(--mono);color:#ff9d96;text-shadow:0 0 3px #000,0 0 3px #000;pointer-events:none}
   #map.aplab .ap b{display:block}
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--fg);border:1px solid var(--line)}
   .leaflet-popup-content{font:14px/1.4 var(--ui);margin:10px 14px}
@@ -598,7 +599,7 @@
   var showAps = true, apLayer = L.layerGroup().addTo(map), apMarkers = [];
   AIRPORTS.forEach(function(a){
     var m = L.marker([a[2],a[3]], {
-      icon:L.divIcon({className:'plane', html:'<div class="ap'+(a[4]?' maj':'')+'"><i></i><b>'+a[0]+'</b></div>', iconSize:[28,28], iconAnchor:[14,14]}),
+      icon:L.divIcon({className:'plane', html:'<div class="ap'+(a[4]?' maj':'')+'"><i><svg viewBox="0 0 24 24"><path d="'+PLANE_PATH+'" fill="#fff"/></svg></i><b>'+a[0]+'</b></div>', iconSize:[28,28], iconAnchor:[14,14]}),
       zIndexOffset:-1000, keyboard:false
     });
     m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div><div class="apt" style="margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px"></div>', {minWidth:230});
