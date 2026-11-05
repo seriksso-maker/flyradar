@@ -288,7 +288,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 23:55 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-06 00:20 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -1705,7 +1705,7 @@
     var FY = -1.15, WY = -0.10, ZK = 1.15, HX = 1.05;
     var wallC = 0x2a3038, trimC = 0x1b2025, roofC = 0x222830;
     var B = [[-HX,0.35],[-HX,-0.55],[-0.62,-0.74],[0,-0.78],[0.62,-0.74],[HX,-0.55],[HX,0.35]];
-    var Tp = [[-1.0,0.25],[-1.0,-0.2],[-0.58,-0.38],[0,-0.40],[0.58,-0.38],[1.0,-0.2],[1.0,0.25]], TY = 0.52;
+    var Tp = [[-1.0,0.3],[-1.0,0.02],[-0.58,-0.17],[0,-0.2],[0.58,-0.17],[1.0,0.02],[1.0,0.3]], TY = 0.56;
     var wallM = mat(wallC, {side:T.DoubleSide}), trimM = mat(trimC, {side:T.DoubleSide}), roofM = mat(roofC, {side:T.DoubleSide});
 
     // Gulv
@@ -1716,9 +1716,9 @@
     [-1,1].forEach(function(e){ quad([[e*HX,FY,0.35],[e*HX,FY,ZK],[e*HX,0.62,ZK],[e*HX,TY,0.3]], wallM); });
     poly([[-HX,FY,ZK],[HX,FY,ZK],[HX,0.62,ZK],[0.6,0.86,ZK],[-0.6,0.86,ZK],[-HX,0.62,ZK]], wallM);
     // Tak
-    quad([[-0.6,0.64,-0.40],[0.6,0.64,-0.40],[0.6,0.86,ZK],[-0.6,0.86,ZK]], roofM);
-    [-1,1].forEach(function(e){ poly([[e*1.0,TY,-0.2],[e*0.6,0.64,-0.4],[e*0.6,0.86,ZK],[e*HX,0.62,ZK],[e*HX,TY,0.3]], roofM); });
-    for(i=1;i<5;i++) quad([[Tp[i][0],TY,Tp[i][1]],[Tp[i+1][0],TY,Tp[i+1][1]],[Tp[i+1][0]*1.02,0.64,Tp[i+1][1]],[Tp[i][0]*1.02,0.64,Tp[i][1]]], trimM);
+    quad([[-0.6,0.68,-0.2],[0.6,0.68,-0.2],[0.6,0.86,ZK],[-0.6,0.86,ZK]], roofM);
+    [-1,1].forEach(function(e){ poly([[e*1.0,TY,0.02],[e*0.6,0.68,-0.2],[e*0.6,0.86,ZK],[e*HX,0.62,ZK],[e*HX,TY,0.3]], roofM); });
+    for(i=1;i<5;i++) quad([[Tp[i][0],TY,Tp[i][1]],[Tp[i+1][0],TY,Tp[i+1][1]],[Tp[i+1][0]*1.02,0.68,Tp[i+1][1]],[Tp[i][0]*1.02,0.68,Tp[i][1]]], trimM);
     // Rutestolper og rammer
     var pw = [0.04,0.05,0.07,0.08,0.07,0.05,0.04];
     for(i=0;i<7;i++) beam([B[i][0],WY,B[i][1]], [Tp[i][0],TY,Tp[i][1]], pw[i], 0x131619);
@@ -1727,7 +1727,7 @@
     var glT = ptex(256, 256, function(c, w, h){ var g1 = c.createLinearGradient(0, 0, w, h); g1.addColorStop(0, 'rgba(255,255,255,0)'); g1.addColorStop(.4, 'rgba(255,255,255,0.10)'); g1.addColorStop(.55, 'rgba(255,255,255,0)'); g1.addColorStop(.8, 'rgba(255,255,255,0.05)'); g1.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g1; c.fillRect(0, 0, w, h); c.fillStyle = 'rgba(20,50,45,0.07)'; c.fillRect(0, 0, w, h); });
     for(i=0;i<6;i++) quad([[B[i][0],WY,B[i][1]],[B[i+1][0],WY,B[i+1][1]],[Tp[i+1][0],TY,Tp[i+1][1]],[Tp[i][0],TY,Tp[i][1]]], bas(glT, {transparent:true, depthWrite:false}));
     // Visker
-    [-1,1].forEach(function(e){ beam([e*0.12,-0.08,-0.76], [e*0.50,0.38,-0.5], 0.012, 0x0a0b0d); beam([e*0.2,-0.08,-0.75], [e*0.55,0.32,-0.5], 0.01, 0x0a0b0d); });
+    [-1,1].forEach(function(e){ beam([e*0.12,-0.08,-0.77], [e*0.50,0.36,-0.34], 0.012, 0x0a0b0d); beam([e*0.2,-0.08,-0.76], [e*0.55,0.3,-0.35], 0.01, 0x0a0b0d); });
 
     // Glareshield
     var gsM = new T.MeshLambertMaterial({map:noiseTex('#1f2429', 40, 3), side:T.DoubleSide});
@@ -1792,11 +1792,11 @@
       btns(336, 302, 14, 3, [wht, grn, amb]);
       panel(716, 8, 300, 368, 'AIR COND · ANTI ICE · CABIN · EXT LT'); btns(728, 34, 11, 7, [grn, wht, blu, amb, wht]); c.fillStyle = '#0b0e12'; c.fillRect(728, 200, 276, 44); c.fillStyle = amb; c.font = '700 16px monospace'; c.fillText('CAB PRESS    PACK 1  2', 866, 230); btns(728, 258, 11, 4, [wht, blu, grn, amb]);
     });
-    function yr(z){ return 0.64 + (z+0.4)/1.55*0.22 - 0.012; }
+    function yr(z){ return 0.68 + (z+0.2)/1.35*0.18 - 0.012; }
     var ohM = bas(ohT);
-    quad([[-0.55,yr(0.33),0.33],[0.55,yr(0.33),0.33],[0.36,yr(-0.37),-0.37],[-0.36,yr(-0.37),-0.37]], ohM, [0.28,0,0.72,0,0.72,1,0.28,1]);
-    quad([[-0.92,yr(0.3)-0.07,0.3],[-0.55,yr(0.33),0.33],[-0.36,yr(-0.37),-0.37],[-0.6,yr(-0.3)-0.07,-0.3]], ohM, [0,0,0.28,0,0.28,1,0,1]);
-    quad([[0.55,yr(0.33),0.33],[0.92,yr(0.3)-0.07,0.3],[0.6,yr(-0.3)-0.07,-0.3],[0.36,yr(-0.37),-0.37]], ohM, [0.72,0,1,0,1,1,0.72,1]);
+    quad([[-0.55,yr(0.33),0.33],[0.55,yr(0.33),0.33],[0.36,yr(-0.17),-0.17],[-0.36,yr(-0.17),-0.17]], ohM, [0.28,0,0.72,0,0.72,1,0.28,1]);
+    quad([[-0.92,yr(0.3)-0.07,0.3],[-0.55,yr(0.33),0.33],[-0.36,yr(-0.17),-0.17],[-0.6,yr(-0.1)-0.07,-0.1]], ohM, [0,0,0.28,0,0.28,1,0,1]);
+    quad([[0.55,yr(0.33),0.33],[0.92,yr(0.3)-0.07,0.3],[0.6,yr(-0.1)-0.07,-0.1],[0.36,yr(-0.17),-0.17]], ohM, [0.72,0,1,0,1,1,0.72,1]);
     for(i=0;i<9;i++){ var kx = -0.6+i*0.15, kz = 0.1 - (i%3)*0.2; cyl(0.017, 0.02, 0.03, 0xeceff2, kx*0.8, yr(kz)-0.025, kz); cyl(0.022, 0.022, 0.006, 0xc9a64a, kx*0.8, yr(kz)-0.012, kz); }
     quad([[-0.1,0.85,0.7],[0.1,0.85,0.7],[0.1,0.85,0.55],[-0.1,0.85,0.55]], new T.MeshBasicMaterial({color:0xfff3d6, side:T.DoubleSide}));
     // Bakdør
