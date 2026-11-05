@@ -154,6 +154,10 @@
   #air{min-width:190px;max-width:100%}
   #air.on{border-color:var(--amber);color:var(--amber)}
   .photo{display:block;width:100%;max-height:150px;object-fit:cover;border-bottom:1px solid var(--line)}
+  .lnks{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+  .lnks span{width:100%;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+  .lnks a{padding:6px 10px;border:1px solid var(--line);border-radius:8px;color:#59d0ff;font-size:13px;text-decoration:none}
+  .lnks a:hover{border-color:#59d0ff}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -1114,7 +1118,13 @@
       + (chips ? '<div class="chips">'+chips+'</div>' : '')
       + '<div class="air">'+esc(airline || d.reg || '')+'</div></div>'+photo
       + '<button class="x" id="close" aria-label="Lukk">×</button></div>'
-      + route + grid + extra
+      + route + grid + extra + (function(){
+        var hx = encodeURIComponent(d.hex), cs = encodeURIComponent((d.call||'').replace(/\s/g,'')), rg = encodeURIComponent(((a && a.registration) || d.reg || '').replace(/\s/g,''));
+        var L2 = [['Planespotters', 'https://www.planespotters.net/hex/'+hx], ['ADS-B Exchange', 'https://globe.adsbexchange.com/?icao='+hx]];
+        if(cs) L2.unshift(['FlightAware', 'https://www.flightaware.com/live/flight/'+cs], ['Flightradar24', 'https://www.flightradar24.com/'+cs]);
+        if(rg) L2.push(['JetPhotos', 'https://www.jetphotos.com/registration/'+rg]);
+        return '<div class="lnks"><span>Mer om flyet</span>'+L2.map(function(x){ return '<a href="'+x[1]+'" target="_blank" rel="noopener noreferrer">'+x[0]+' ↗</a>'; }).join('')+'</div>';
+      })()
       + '<div class="acts"><button id="bRoute" type="button" class="'+(showRoute?'on':'')+'">Rute</button>'
       + '<button id="bCock" type="button">Cockpit</button>'
       + '<button id="bMore" type="button" class="'+(more?'on':'')+'">Mer info</button>'
