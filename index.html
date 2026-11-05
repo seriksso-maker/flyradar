@@ -1134,7 +1134,7 @@
       + '<button class="x" id="close" aria-label="Lukk">×</button></div>'
       + route + grid + extra + (function(){
         var hx = encodeURIComponent(d.hex), cs = encodeURIComponent((d.call||'').replace(/\s/g,'')), rg = encodeURIComponent(((a && a.registration) || d.reg || '').replace(/\s/g,''));
-        var L2 = [['Planespotters', 'https://www.planespotters.net/hex/'+hx], ['ADS-B Exchange', 'https://globe.adsbexchange.com/?icao='+hx]];
+        var L2 = [['ADS-B Exchange', 'https://globe.adsbexchange.com/?icao='+hx]];
         if(cs) L2.unshift(['FlightAware', 'https://www.flightaware.com/live/flight/'+cs]);
         if(rg) L2.push(['JetPhotos', 'https://www.jetphotos.com/registration/'+rg]);
         return '<div class="lnks"><span>Mer om flyet</span>'+L2.map(function(x){ return '<a href="'+x[1]+'" target="_blank" rel="noopener noreferrer">'+x[0]+' ↗</a>'; }).join('')+'</div>';
