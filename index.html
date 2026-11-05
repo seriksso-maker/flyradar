@@ -1270,10 +1270,10 @@
     c.closePath();
   }
   function windowPath(c, L, keep){
-    var W = L.W, H = L.H, tx = L.port ? 0.14 : 0.22, bx = L.port ? -0.01 : 0.012, ty = L.port ? 0.075 : 0.085;   // ruta heller bakover: smalere og lavere i toppen
+    var W = L.W, H = L.H, tx = 0.012, bx = -0.01, ty = L.port ? 0.06 : 0.05;   // ruta heller bakover: smalere og lavere i toppen
     if(!keep) c.beginPath();
     c.moveTo(W*tx, H*ty);
-    c.quadraticCurveTo(W*0.5, H*(ty-0.045), W*(1-tx), H*ty);
+    c.quadraticCurveTo(W*0.5, H*(ty-0.035), W*(1-tx), H*ty);
     c.lineTo(W*(1-bx), L.wy); c.lineTo(W*bx, L.wy); c.closePath();
   }
   function drawFrame(c, L){
@@ -1290,11 +1290,15 @@
     g = c.createLinearGradient(W/2-pw/2, 0, W/2+pw/2, 0); g.addColorStop(0, '#1a1f26'); g.addColorStop(.5, '#2c333c'); g.addColorStop(1, '#14181d');
     c.fillStyle = g; c.fillRect(W/2-pw/2, 0, pw, L.wy);
     // Skrå sidestolper (A-stolper) som følger rutas helling bakover
-    var tx2 = L.port ? 0.14 : 0.22, bx2 = L.port ? 0.2 : 0.3, ty2 = L.port ? 0.075 : 0.085, sp = Math.max(7, W*0.014);
+    var tx2 = L.port ? 0.14 : 0.22, bx2 = L.port ? 0.2 : 0.3, ty2 = L.port ? 0.06 : 0.05, sp = Math.max(7, W*0.014);
     [0, 1].forEach(function(k){
       var xb = k ? W*(1-bx2) : W*bx2, xt = k ? W*(1-(tx2+(bx2-tx2)*0.55)) : W*(tx2+(bx2-tx2)*0.55);
       var gg = c.createLinearGradient(xb-sp, 0, xb+sp, 0); gg.addColorStop(0, '#14181d'); gg.addColorStop(.5, '#2a313a'); gg.addColorStop(1, '#101317');
       c.fillStyle = gg; c.beginPath(); c.moveTo(xt-sp*0.55, H*ty2); c.lineTo(xt+sp*0.55, H*ty2); c.lineTo(xb+sp, L.wy); c.lineTo(xb-sp, L.wy); c.closePath(); c.fill();
+      // Ytre stolpe: skiller frontruta fra sidevinduet ytterst
+      var ox_t = k ? W*(1-(L.port ? 0.15 : 0.215)) : W*(L.port ? 0.15 : 0.215), ox_b = k ? W*0.975 : W*0.025, w1 = Math.max(8, W*0.011), w2 = w1*1.5, sg = k ? -1 : 1;
+      var og = c.createLinearGradient(ox_b-w2, 0, ox_b+w2, 0); og.addColorStop(0, '#12161b'); og.addColorStop(.5, '#2b323c'); og.addColorStop(1, '#101317');
+      c.fillStyle = og; c.beginPath(); c.moveTo(ox_t-w1, H*ty2*0.4); c.lineTo(ox_t+w1, H*ty2*0.4); c.lineTo(ox_b+w2, L.wy); c.lineTo(ox_b-w2, L.wy); c.closePath(); c.fill();
     });
     // Svak refleksjon og kantmørkning i glasset
     var rg = c.createRadialGradient(W/2, L.wy*.55, Math.min(W, L.wy)*0.3, W/2, L.wy*.55, Math.max(W, L.wy)*0.75);
