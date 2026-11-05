@@ -288,7 +288,7 @@
   </select>
   <label>Feilsøking</label>
   <button type="button" id="sTest" style="width:100%">Kjør test av kilder og kart</button>
-  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 21:00 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
+  <label>Versjon</label><div style="font-size:12px;color:var(--mute)">2026-11-05 22:10 (har du ikke cast-ikonet øverst til høyre, last siden på nytt)</div>
   <label>Kilder</label>
   <div style="font-size:11px;color:var(--mute);line-height:1.5">Kart: Esri, Maxar, Earthstar Geographics, OpenStreetMap-bidragsytere, Kartverket · Radar og skyer: RainViewer · Vær: Open-Meteo, aviationweather.gov · Flydata: adsb.lol m.fl. · Rute og flyinfo: adsbdb.com · <a href="https://leafletjs.com" style="color:var(--mute)">Leaflet</a></div>
 </div>
@@ -1647,8 +1647,8 @@
       m.position.set(x, y, z); m.rotation.set(rx||0, ry||0, rz||0); g.add(m); return m;
     }
     // Støvete teppe og stoff
-    var carpet = new T.Mesh(new T.PlaneGeometry(2*X, ZB-ZF), new T.MeshLambertMaterial({map:noise('#26292e', 60, 12, 10)})); carpet.rotation.x = -Math.PI/2; carpet.position.set(0, Y0+0.012, (ZB+ZF)/2); g.add(carpet);
-    var wallTex = noise('#3a3f47', 50, 5, 5);
+    var carpet = new T.Mesh(new T.PlaneGeometry(2*X, ZB-ZF), new T.MeshLambertMaterial({map:noise('#3b3e43', 60, 12, 10)})); carpet.rotation.x = -Math.PI/2; carpet.position.set(0, Y0+0.012, (ZB+ZF)/2); g.add(carpet);
+    var wallTex = noise('#6d7279', 40, 5, 5);
     [[0, ZF+0.004, 0, 2*X, Y1-Y0]].forEach(function(q){ var m = new T.Mesh(new T.PlaneGeometry(2*X-0.02, 0.35), new T.MeshLambertMaterial({map:wallTex})); m.position.set(0, -0.92, ZF+0.005); g.add(m); });
     // Overheadpanel
     var oh = ptex(512, 256, function(c, w, h){
@@ -1661,16 +1661,16 @@
         for(var b=0;b<4;b++){ var bx = x+6+(b%2)*34, by = y+18+Math.floor(b/2)*26; c.fillStyle = '#0d0f12'; c.fillRect(bx, by, 28, 20); c.fillStyle = cols[(r+k+b)%4]; c.fillRect(bx+3, by+3, 22, 5); c.fillStyle = '#5a626d'; c.fillRect(bx+3, by+11, 22, 6); }
       }
     });
-    pl(oh, 0.9, 0.45, 0, Y1-0.132, -0.95, Math.PI/2, 0, 0, true);
+    pl(oh, 1.1, 0.6, 0, Y1-0.132, -0.88, Math.PI/2, 0, 0, true);
     // Sikringspaneler og sidekonsoller
     var cb = ptex(256, 256, function(c, w, h){ c.fillStyle = '#16191d'; c.fillRect(0, 0, w, h); for(var r=0;r<12;r++) for(var k=0;k<12;k++){ var col = Math.random()<.08 ? '#d9a82a' : (Math.random()<.07 ? '#c04a3a' : '#e9ecef'); c.fillStyle = '#050607'; c.fillRect(8+k*20, 8+r*20, 14, 14); c.fillStyle = col; c.beginPath(); c.arc(15+k*20, 15+r*20, 4.5, 0, 7); c.fill(); } });
     // (sikringspaneler fjernet: bakvinduer)
     var sc = ptex(256, 256, function(c, w, h){ c.fillStyle = '#20252b'; c.fillRect(0, 0, w, h); c.fillStyle = '#0a0c0f'; c.fillRect(16, 20, 224, 90); c.fillStyle = '#2d6a3a'; c.fillRect(24, 28, 208, 74); c.fillStyle = '#d6dde4'; c.font = '700 14px monospace'; c.fillText('MCDU  FMGC', 40, 52); c.fillStyle = '#47ff6a'; for(var i=0;i<4;i++) c.fillText('─ ─ ─ ─ ─ ─ ─ ─', 34, 70+i*13);
       for(var r=0;r<5;r++) for(var k=0;k<8;k++){ c.fillStyle = '#0d0f12'; c.fillRect(18+k*28, 124+r*26, 22, 18); c.fillStyle = '#6a727d'; c.fillRect(20+k*28, 126+r*26, 18, 4); } });
-    pl(sc, 0.4, 0.4, -(X-0.032), -0.28, -0.55, -0.9, Math.PI/2, 0, true); pl(sc, 0.4, 0.4, (X-0.032), -0.28, -0.55, -0.9, -Math.PI/2, 0, true);
+    pl(sc, 0.2, 0.2, 0, -0.192, -0.3, -Math.PI/2, 0, 0, true);
     // Radiopanel på pedestalen
     var rp = ptex(128, 256, function(c, w, h){ c.fillStyle = '#23282e'; c.fillRect(0, 0, w, h); for(var i=0;i<4;i++){ c.fillStyle = '#050607'; c.fillRect(10, 14+i*58, 108, 24); c.fillStyle = '#47e0ff'; c.font = '700 18px monospace'; c.fillText(['118.250','121.500','7000','TCAS'][i], 16, 33+i*58); c.fillStyle = '#6a727d'; c.beginPath(); c.arc(30, 48+i*58, 4, 0, 7); c.arc(98, 48+i*58, 4, 0, 7); c.fill(); } });
-    pl(rp, 0.19, 0.32, 0, -0.196, -0.18, -Math.PI/2, 0, 0, true);
+    pl(rp, 0.2, 0.1, 0, -0.192, -0.15, -Math.PI/2, 0, 0, true);
     // FCU på glareshield (live)
     var fcu = ptex(512, 64, function(){}); scr.fcu = {cv:fcu.image, tex:fcu, ctx:fcu.image.getContext('2d')};
     pl(fcu, 0.78, 0.098, 0, -0.043, ZF+0.1, -Math.PI/2, 0, 0, true);
@@ -1691,6 +1691,50 @@
     var jb = new T.Mesh(new T.BoxGeometry(0.44, 0.5, 0.08), new T.MeshLambertMaterial({color:0x2b2f36})); jb.position.set(0, -0.35, 0.9); g.add(jb);
   }
 
+
+  function drawSD(t){
+    var c = t.ctx, W = t.cv.width, H = t.cv.height, mono = 'ui-monospace,Menlo,monospace', alt = Math.max(0, cs.alt||0);
+    c.fillStyle = '#04070b'; c.fillRect(0, 0, W, H);
+    var sat = 15 - 1.98*alt/1000, a = 661.47*Math.sqrt((sat+273.15)/288.15), M = Math.min(0.95, (cs.spd||0)/a), tat = (sat+273.15)*(1+0.2*M*M)-273.15;
+    function P(h){ return 14.696*Math.pow(1 - 6.8756e-6*h, 5.2559); }
+    var cab = Math.min(alt, 450 + alt*0.17), dp = P(cab) - P(alt);
+    c.fillStyle = '#47ff6a'; c.font = '700 20px ' + mono; c.textAlign = 'center'; c.fillText('CRUISE', W/2, 28);
+    c.strokeStyle = '#d9dde2'; c.lineWidth = 2; c.beginPath(); c.moveTo(12, 38); c.lineTo(W-12, 38); c.stroke();
+    var rows = [['SAT', Math.round(sat) + '°C'], ['TAT', Math.round(tat) + '°C'], ['MACH', M.toFixed(2)], ['CAB ALT', Math.round(cab/50)*50 + ' FT'], ['Δ P', dp.toFixed(1) + ' PSI'], ['V/S', Math.round((cs.vs||0)/50)*50 + ' FPM']];
+    c.font = '600 17px ' + mono;
+    for(var i=0;i<rows.length;i++){ var y = 66 + i*28; c.textAlign = 'left'; c.fillStyle = '#6fb7ff'; c.fillText(rows[i][0], 20, y); c.textAlign = 'right'; c.fillStyle = '#47ff6a'; c.fillText(rows[i][1], W-20, y); }
+    c.textAlign = 'center'; c.fillStyle = '#9aa3ad'; c.font = '600 11px ' + mono; c.fillText('SIM · beregnet fra flydata', W/2, H-8);
+    t.tex.needsUpdate = true;
+  }
+  function a320(g, T, X, ZF, ZB, Y0, Y1){
+    function m(c){ return new T.MeshLambertMaterial({color:c}); }
+    function cyl(r1, r2, h, c, x, y, z, rx, rz){ var q = new T.Mesh(new T.CylinderGeometry(r1, r2, h, 14), m(c)); q.position.set(x, y, z); q.rotation.set(rx||0, 0, rz||0); g.add(q); return q; }
+    function ball(r, c, x, y, z, sx, sy, sz){ var q = new T.Mesh(new T.SphereGeometry(r, 14, 12), m(c)); q.position.set(x, y, z); q.scale.set(sx||1, sy||1, sz||1); g.add(q); return q; }
+    function bx(w, h, d, c, x, y, z, rx){ var q = new T.Mesh(new T.BoxGeometry(w, h, d), m(c)); q.position.set(x, y, z); q.rotation.x = rx||0; g.add(q); return q; }
+    // Pedestal: gasshendler med spor, klaffer, speedbrake, trimhjul
+    bx(0.2, 0.012, 0.22, 0x14171a, 0, -0.197, -0.5);
+    [-0.035, 0.035].forEach(function(x){ bx(0.012, 0.012, 0.2, 0x050607, x, -0.2, -0.5); cyl(0.011, 0.011, 0.16, 0x1d2126, x, -0.14, -0.43, 0.55); ball(0.025, 0x0d0f12, x, -0.075, -0.385, 1, 0.8, 1.3); bx(0.02, 0.008, 0.03, 0xe8e8e8, x, -0.062, -0.39, 0.4); });
+    cyl(0.009, 0.009, 0.1, 0x2a2f35, -0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, -0.085, -0.1, -0.455);      // speedbrake
+    cyl(0.009, 0.009, 0.1, 0x2a2f35, 0.085, -0.15, -0.48, 0.5); ball(0.014, 0x2a2f35, 0.085, -0.1, -0.455);       // klaffer
+    [-1, 1].forEach(function(e){ var w = cyl(0.075, 0.075, 0.025, 0x23272c, e*0.125, -0.3, -0.3, 0, Math.PI/2); for(var k=0;k<10;k++){ var a = k/10*Math.PI*2; bx(0.026, 0.01, 0.01, 0x777d85, e*0.125, -0.3+Math.sin(a)*0.075, -0.3+Math.cos(a)*0.075); } });
+    // Sidestikker
+    [-1, 1].forEach(function(e){
+      var x = e*0.82;
+      bx(0.14, 0.05, 0.2, 0x3b3f45, x, -0.66, 0.02);
+      cyl(0.016, 0.022, 0.11, 0x24282d, x - e*0.012, -0.6, 0.02, 0, e*0.18);
+      ball(0.034, 0x14171a, x - e*0.022, -0.53, 0.0, 0.9, 1.6, 1.3);
+      ball(0.008, 0xc02020, x - e*0.03, -0.505, -0.03);
+      bx(0.1, 0.02, 0.18, 0x4f545b, x + e*0.05, -0.55, 0.12);               // armlene
+      cyl(0.03, 0.03, 0.03, 0x1a1d21, e*0.98, -0.42, -0.1, 0, Math.PI/2);    // tiller
+    });
+    // Visker
+    [-1, 1].forEach(function(e){ var w = bx(0.012, 0.5, 0.008, 0x0a0b0d, e*0.5, 0.33, ZF+0.02); w.rotation.z = e*0.55; var b = bx(0.008, 0.42, 0.006, 0x0a0b0d, e*0.5+e*0.04, 0.33, ZF+0.018); b.rotation.z = e*0.5; });
+    // Taklys og overhead-kant
+    bx(0.14, 0.01, 0.14, 0xfff4d8, 0, Y1-0.012, 0.3); bx(1.12, 0.05, 0.03, 0x2a2d31, 0, Y1-0.15, -0.58);
+    // Haner og dokumentlomme
+    [-1, 1].forEach(function(e){ bx(0.03, 0.04, 0.3, 0x2a2d31, e*(X-0.05), 0.55, -0.15); bx(0.02, 0.2, 0.28, 0x505560, e*(X-0.03), -0.45, 0.45); });
+  }
+
   function panBuild(){
     var T = THREE, g = new T.Group();
     function mat(c){ return new T.MeshLambertMaterial({color:c}); }
@@ -1701,52 +1745,48 @@
     // Frontvegg med to vinduer
     var s = new T.Shape(); rectP(s, -X, Y0, X, Y1);
     s.holes.push(rectP(null, -1.02, -0.02, -0.04, 0.72, true), rectP(null, 0.04, -0.02, 1.02, 0.72, true));
-    var fw = wall(s, 0x20252c); fw.position.z = ZF; g.add(fw);
+    var fw = wall(s, 0x6f747b); fw.position.z = ZF; g.add(fw);
     // Sidevegger med vindu
     [-1, 1].forEach(function(sx){
       var sh = new T.Shape(); rectP(sh, ZF, Y0, ZB, Y1);
       sh.holes.push(rectP(null, -1.0, -0.02, -0.05, 0.72, true), rectP(null, 0.12, -0.02, 0.85, 0.72, true));
-      var sw = wall(sh, 0x23282f); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
+      var sw = wall(sh, 0x7a7f86); sw.rotation.y = -Math.PI/2; sw.position.x = sx*X; g.add(sw);
     });
-    box(2*X, 0.02, ZB-ZF, 0x14171b, 0, Y0, (ZB+ZF)/2);                 // gulv
-    box(2*X, 0.02, ZB-ZF, 0x1b1f24, 0, Y1, (ZB+ZF)/2);                 // tak
+    box(2*X, 0.02, ZB-ZF, 0x2a2d31, 0, Y0, (ZB+ZF)/2);                 // gulv
+    box(2*X, 0.02, ZB-ZF, 0x9ba0a6, 0, Y1, (ZB+ZF)/2);                 // tak
     var bs = new T.Shape(); rectP(bs, -X, Y0, X, Y1); bs.holes.push(rectP(null, -1.05, -0.02, -0.07, 0.72, true), rectP(null, 0.07, -0.02, 1.05, 0.72, true));
-    var bw = wall(bs, 0x1a1e23); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
-    [-0.56, 0.56].forEach(function(bx){ box(0.98, 0.03, 0.03, 0x0e1115, bx, 0.725, ZB-0.01); box(0.98, 0.03, 0.03, 0x0e1115, bx, -0.03, ZB-0.01); });
-    box(0.9, 0.12, 0.45, 0x2b323b, 0, Y1-0.07, -0.95);                 // overheadpanel
+    var bw = wall(bs, 0x70757c); bw.position.z = ZB; g.add(bw);   // bakvegg med panoramavinduer
+    [-0.56, 0.56].forEach(function(bx){ box(0.98, 0.03, 0.03, 0x3b3f45, bx, 0.725, ZB-0.01); box(0.98, 0.03, 0.03, 0x3b3f45, bx, -0.03, ZB-0.01); });
+    box(1.1, 0.12, 0.6, 0x8d9299, 0, Y1-0.07, -0.88);                 // overheadpanel
     // Dashbord og glareshield
-    box(2*X-0.02, 0.5, 0.58, 0x181c21, 0, -0.55, ZF+0.31);
-    box(2*X-0.02, 0.05, 0.12, 0x2a2f37, 0, -0.07, ZF+0.1);
-    box(0.22, 0.9, 0.5, 0x1b2026, 0, -0.65, -0.35);                    // sentersokkel
-    box(0.18, 0.04, 0.34, 0x2d343d, 0, -0.2, -0.35);                   // gasshendler
-    for(i=0;i<2;i++) box(0.03, 0.03, 0.2, 0x3a3f47, -0.05+i*0.1, -0.15, -0.36);
+    box(2*X-0.02, 0.5, 0.58, 0x2e3238, 0, -0.55, ZF+0.31);
+    box(2*X-0.02, 0.05, 0.12, 0x202328, 0, -0.07, ZF+0.1);
+    box(0.22, 0.9, 0.5, 0x4a4f57, 0, -0.65, -0.35);                    // sentersokkel
     // Skjermer
     var scr = {};
-    function screen(key, w, h, x, tw, th){
+    function screen(key, w, h, x, y, tw, th){
       var t = mkTex(tw, th); scr[key] = t;
       var m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({map:t.tex}));
-      m.position.set(x, -0.15, ZF+0.62); m.rotation.x = -0.3; g.add(m);
-      var fr = new T.Mesh(new T.PlaneGeometry(w+0.03, h+0.03), new T.MeshBasicMaterial({color:0x07090b}));
+      m.position.set(x, y, ZF+0.62); m.rotation.x = -0.3; g.add(m);
+      var fr = new T.Mesh(new T.PlaneGeometry(w+0.025, h+0.025), new T.MeshBasicMaterial({color:0x06080a}));
       fr.position.copy(m.position); fr.rotation.copy(m.rotation); fr.translateZ(-0.002); g.add(fr);
     }
-    screen('pfdL', 0.29, 0.29, -0.8, 256, 256); screen('ndL', 0.29, 0.29, -0.49, 256, 256);
-    screen('info', 0.30, 0.24, 0, 320, 256);
-    screen('ndR', 0.29, 0.29, 0.49, 256, 256); screen('pfdR', 0.29, 0.29, 0.8, 256, 256);
+    var fas = new T.Mesh(new T.PlaneGeometry(2*X-0.06, 0.5), new T.MeshLambertMaterial({color:0x3d4148})); fas.position.set(0, -0.2, ZF+0.606); fas.rotation.x = -0.3; g.add(fas);
+    screen('pfdL', 0.27, 0.27, -0.84, -0.17, 256, 256); screen('ndL', 0.27, 0.27, -0.55, -0.17, 256, 256);
+    screen('info', 0.25, 0.2, -0.02, -0.12, 320, 256); screen('sd', 0.25, 0.19, -0.02, -0.355, 320, 240);
+    screen('ndR', 0.27, 0.27, 0.51, -0.17, 256, 256); screen('pfdR', 0.27, 0.27, 0.8, -0.17, 256, 256);
     // Detaljer: overheadpanel med brytere, sidepaneler, sikringspaneler, vindusrammer
     var rnd = 7; function rr2(){ rnd = (rnd*9301 + 49297) % 233280; return rnd/233280; }
     [-1,1].forEach(function(sx){
       box(0.03, 0.5, 0.7, 0x1a1e23, sx*(X-0.02), -0.55, -0.55);               // sidekonsoll
-      box(0.03, 0.04, 0.7, 0x0e1115, sx*(X-0.01), 0.725, 0.5);
+      box(0.03, 0.04, 0.7, 0x3b3f45, sx*(X-0.01), 0.725, 0.5);
       box(0.05, 0.05, 0.9, 0x0f1216, sx*(X-0.03), 0.76, -0.1);               // sol­skjerm-liste
     });
     // Vindusrammer
     [[-0.53,0.35],[0.53,0.35]].forEach(function(w){
-      box(0.98, 0.03, 0.04, 0x0e1115, w[0], 0.725, ZF+0.01); box(0.98, 0.03, 0.04, 0x0e1115, w[0], -0.03, ZF+0.01);
+      box(0.98, 0.03, 0.04, 0x3b3f45, w[0], 0.725, ZF+0.01); box(0.98, 0.03, 0.04, 0x3b3f45, w[0], -0.03, ZF+0.01);
     });
-    box(0.08, 0.76, 0.05, 0x0e1115, 0, 0.35, ZF+0.01);                       // midtstolpe
-    // Gasshendler og pedestal-detaljer
-    for(i=0;i<2;i++){ var th = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.16, 10), mat(0x2b3037)); th.position.set(-0.03+i*0.06, -0.15, -0.38); th.rotation.x = -0.5; g.add(th);
-      var kn = new T.Mesh(new T.SphereGeometry(0.03, 12, 10), mat(0x0d0f12)); kn.position.set(-0.03+i*0.06, -0.09, -0.43); g.add(kn); }
+    box(0.08, 0.76, 0.05, 0x3b3f45, 0, 0.35, ZF+0.01);                       // midtstolpe
     // Pedaler
     [-0.6, 0.6].forEach(function(px){ [-1,1].forEach(function(e){ var pd = new T.Mesh(new T.BoxGeometry(0.09, 0.14, 0.02), mat(0x2d3238)); pd.position.set(px+e*0.11, -0.8, -0.55); pd.rotation.x = -0.5; g.add(pd); }); });
     // Piloter
@@ -1762,10 +1802,10 @@
       var P = new T.Group(); P.position.set(px, 0, 0.18); g.add(P);
       var shirt = 0xf4f5f7, pants = 0x151a28, shoe = 0x0b0b0d, top = jacket ? 0x131b33 : shirt;
       // Sete
-      ell(P, 0.25, 0.05, 0.27, 0x30353d, 0, -0.76, 0.12);
-      ell(P, 0.24, 0.45, 0.07, 0x30353d, 0, -0.35, 0.37);
-      ell(P, 0.1, 0.07, 0.05, 0x30353d, 0, 0.1, 0.38);
-      box(0.05, 0.05, 0.3, 0x24282e, 0.3*(px<0?-1:1), -0.5, 0.15, P);
+      ell(P, 0.25, 0.05, 0.27, 0x666c74, 0, -0.76, 0.12);
+      ell(P, 0.24, 0.45, 0.07, 0x666c74, 0, -0.35, 0.37);
+      ell(P, 0.1, 0.07, 0.05, 0x666c74, 0, 0.1, 0.38);
+      box(0.05, 0.05, 0.3, 0x4a4f56, 0.3*(px<0?-1:1), -0.5, 0.15, P);
       // Kropp
       ell(P, 0.19, 0.17, 0.12, top, 0, -0.2, 0.21);                       // bryst
       ell(P, 0.16, 0.2, 0.11, top, 0, -0.45, 0.22);
@@ -1808,13 +1848,11 @@
         limb(P, [e*0.11,-0.64,-0.12], [e*0.11,-0.9,-0.28], 0.06, 0.048, pants);  // legg
         ell(P, 0.055, 0.04, 0.1, shoe, e*0.11, -0.94, -0.33);
       });
-      // Sidestikk
-      var so = px<0 ? -0.2 : 0.2;
-      var st = new T.Mesh(new T.CylinderGeometry(0.015, 0.02, 0.14, 10), mat(0x1b1e23)); st.position.set(so+px*0+ (px<0?-0.15:0.15), -0.58, -0.14); st.rotation.x = 0.15; g.add(st);
+
     }
     pilot(-0.6, 4, true, 0xd9a98a, 0x3b2a1b, true); pilot(0.6, 3, false, 0xc48a68, 0x6b6b6b, false);
-    realism(g, T, X, ZF, ZB, Y0, Y1, scr);
-    g.add(new T.HemisphereLight(0xdfe9f5, 0x2a2420, 0.62));
+    realism(g, T, X, ZF, ZB, Y0, Y1, scr); a320(g, T, X, ZF, ZB, Y0, Y1);
+    g.add(new T.HemisphereLight(0xeef3fa, 0x3a342e, 0.85));
     var dl = new T.DirectionalLight(0xfff0d8, 0.95); dl.position.set(-0.9, 1.3, -3.2); dl.target.position.set(0, -0.3, 0.2); g.add(dl); g.add(dl.target);
     dl.castShadow = true; dl.shadow.mapSize.set(1024, 1024); dl.shadow.bias = -0.002; var sc = dl.shadow.camera; sc.left = -1.8; sc.right = 1.8; sc.top = 1.8; sc.bottom = -1.8; sc.near = 0.5; sc.far = 8;
     var gl1 = new T.PointLight(0x6fa8ff, 0.5, 1.6); gl1.position.set(0, -0.1, -0.7); g.add(gl1);          // skjermlys
@@ -1939,7 +1977,7 @@
       var S = pan.scr, rs = {x:7, y:7, w:242, h:242}, ri = {x:7, y:7, w:306, h:242};
       drawPFD(S.pfdL.ctx, rs, d); drawPFD(S.pfdR.ctx, rs, d);
       drawND(S.ndL.ctx, rs, d, pos); drawND(S.ndR.ctx, rs, d, pos);
-      drawInfo(S.info.ctx, ri, d, pos); drawFCU(S.fcu);
+      drawInfo(S.info.ctx, ri, d, pos); drawFCU(S.fcu); drawSD(S.sd);
       for(var k in S){ S[k].ctx.fillStyle = '#000'; S[k].tex.needsUpdate = true; }
     }
     miniUpd(d, pos, ts);
