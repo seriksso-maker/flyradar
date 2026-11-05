@@ -173,6 +173,11 @@
   #emgBox .emrow button{border:0;background:transparent;color:#ffb3ad;font-size:20px;padding:0 6px;line-height:1}
   .pl.emg::after{content:"";position:absolute;inset:-8px;border-radius:50%;border:3px solid #ff3b30;animation:emgRing 1s ease-out infinite;pointer-events:none}
   @keyframes emgRing{0%{transform:scale(.6);opacity:1}100%{transform:scale(1.8);opacity:0}}
+  #holdBox{position:fixed;left:12px;top:64px;z-index:7000;display:none;padding:6px 12px;border-radius:999px;border:1px solid #59d0ff;background:rgba(10,16,23,.92);color:#59d0ff;font:600 13px var(--ui);cursor:pointer}
+  body.atc #holdBox{top:112px}
+  .pl.hld::before{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px dashed #59d0ff;animation:hldSpin 6s linear infinite;pointer-events:none}
+  .pl.hld.sel::before{border:1.5px solid var(--amber);animation:none}
+  @keyframes hldSpin{to{transform:rotate(360deg)}}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -927,10 +932,10 @@
   }
 
   function iconKey(d, selected, z){
-    return Math.round((d.trk||0)/5)+'|'+(d.ground?'g':Math.round((d.alt||0)/1000))+'|'+(emgOf(d)?'E':'')+(selected?1:0)+'|'+(z>=6?1:0)+'|'+(z>=8?(d.call||d.hex):'');
+    return Math.round((d.trk||0)/5)+'|'+(d.ground?'g':Math.round((d.alt||0)/1000))+'|'+(emgOf(d)?'E':'')+(holdOf(hexOf(d))?'H':'')+(selected?1:0)+'|'+(z>=6?1:0)+'|'+(z>=8?(d.call||d.hex):'');
   }
   function iconFor(d, selected, z){
-    var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+(emgOf(d)?' emg':'')+'" style="color:'+altColor(d)+'">'
+    var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+(emgOf(d)?' emg':'')+(holdOf(d.hex)?' hld':'')+'" style="color:'+altColor(d)+'">'
       + '<svg viewBox="0 0 24 24" style="transform:rotate('+Math.round(d.trk||0)+'deg)" fill="currentColor"><path d="'+PLANE_PATH+'"/></svg>'
       + (z>=6 ? logoHtml(d,'lg') : '')
       + (z>=8 ? '<span class="lb">'+esc(d.call||d.hex)+'</span>' : '')
@@ -969,8 +974,10 @@
       p.d = a; p.seen = now; p.t0 = now; p.lat0 = a.lat; p.lon0 = a.lon;
       var last = p.trail[p.trail.length-1];
       if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon]); if(p.trail.length>80) p.trail.shift(); }
+      p.hold = holdCalc(p);
       draw(a.hex);
     });
+    holdPill();
     Array.from(planes.keys()).forEach(function(hex){
       if(seen.has(hex) || now - planes.get(hex).seen < 60000) return;
       var p = planes.get(hex);
@@ -1067,6 +1074,41 @@
     });
   }
 
+  /* Holding-mønstre: fly som sirkler (samlet svinging >= 300° på lite område, lav høyde) */
+  function hexOf(d){ return d && d.hex; }
+  function holdOf(hex){ var p = planes.get(hex); return p && p.hold ? p.hold : 0; }
+  function holdCalc(p){
+    var d = p.d, tr = p.trail;
+    if(!d || d.ground || !(d.gs > 90) || d.alt == null || d.alt > 20000 || !tr || tr.length < 12) return 0;
+    var k = Math.cos(d.lat*Math.PI/180), pts = [tr[0]], i;
+    for(i=1; i<tr.length; i++){ var q = pts[pts.length-1]; if(Math.hypot((tr[i][0]-q[0])*111, (tr[i][1]-q[1])*111*k) > 0.25) pts.push(tr[i]); }
+    if(pts.length < 10) return 0;
+    var sum = 0, abs = 0, prev = null;
+    for(i=1; i<pts.length; i++){
+      var b = Math.atan2((pts[i][1]-pts[i-1][1])*k, pts[i][0]-pts[i-1][0])*180/Math.PI;
+      if(prev!==null){ var t = ((b-prev+540)%360)-180; if(Math.abs(t) < 100){ sum += t; abs += Math.abs(t); } }
+      prev = b;
+    }
+    var cLa = 0, cLo = 0; pts.forEach(function(q){ cLa += q[0]; cLo += q[1]; }); cLa /= pts.length; cLo /= pts.length;
+    var ext = 0; pts.forEach(function(q){ ext = Math.max(ext, Math.hypot((q[0]-cLa)*111, (q[1]-cLo)*111*k)); });
+    if(Math.abs(sum) >= 300 && abs > 0 && Math.abs(sum)/abs > .8 && ext < 25) return sum > 0 ? 1 : -1;
+    return 0;
+  }
+  var holdBox = null, holdIdx = 0;
+  function holdPill(){
+    var list = []; planes.forEach(function(p){ if(p.hold && p.d && p.marker && p.marker._map) list.push(p.d); });
+    if(!holdBox){
+      holdBox = document.createElement('button'); holdBox.type = 'button'; holdBox.id = 'holdBox';
+      holdBox.addEventListener('click', function(){
+        var l = []; planes.forEach(function(p){ if(p.hold && p.d) l.push(p); });
+        if(!l.length) return; var p = l[holdIdx++ % l.length];
+        if(p.marker) map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 9), {animate:false}); select(p.d.hex);
+      });
+      document.body.appendChild(holdBox);
+    }
+    holdBox.style.display = list.length ? 'block' : 'none';
+    holdBox.textContent = '⟳ ' + list.length + (list.length===1 ? ' fly i holding' : ' fly i holding');
+  }
   function emgOf(d){ return d && ({'7700':1,'7600':1,'7500':1})[d.squawk] ? d.squawk : ''; }
   /* Nødsignalvarsling: squawk 7700 (nød), 7600 (radiosvikt), 7500 (kapring) */
   var emgSeen = {}, emgDismissed = {}, emgBox = null, emgAudio = null;
@@ -1131,6 +1173,7 @@
     var em = emergency(d.squawk);
     var chips = (fno ? '<span class="chip">'+esc(fno)+'</span>' : '')
       + (tcode ? '<span class="chip blue">'+esc(tcode)+'</span>' : '')
+      + (holdOf(d.hex) ? '<span class="chip" style="border-color:#59d0ff;color:#59d0ff">⟳ Holding (venter)</span>' : '')
       + (em ? '<span class="chip red">'+esc(em)+'</span>' : '');
     var photoUrl = a && (a.url_photo_thumbnail || a.url_photo);
     var photo = photoUrl
