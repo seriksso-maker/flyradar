@@ -178,6 +178,10 @@
   .pl.hld::before{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px dashed #59d0ff;animation:hldSpin 6s linear infinite;pointer-events:none}
   .pl.hld.sel::before{border:1.5px solid var(--amber);animation:none}
   @keyframes hldSpin{to{transform:rotate(360deg)}}
+  #rscBox{position:fixed;left:12px;top:100px;z-index:7000;display:none;padding:6px 12px;border-radius:999px;border:1px solid #ff6b60;background:rgba(40,8,8,.92);color:#ff8a80;font:600 13px var(--ui);cursor:pointer}
+  body.atc #rscBox{top:148px}
+  .pl.rsc svg{filter:drop-shadow(0 0 6px #ff3b30) drop-shadow(0 0 2px #fff) !important}
+  .pl .rcx{position:absolute;left:-9px;top:-9px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:50%;background:#e5322a;color:#fff;font:700 10px var(--ui);font-style:normal;border:1px solid #fff;z-index:2}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -316,7 +320,8 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
-  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button></div>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
+  <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
   <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button><button type="button" id="bWind">Vind (kt)</button><button type="button" id="bTemp">Temperatur</button><button type="button" id="bHeat">Trafikkvarmekart</button></div>
@@ -932,11 +937,12 @@
   }
 
   function iconKey(d, selected, z){
-    return Math.round((d.trk||0)/5)+'|'+(d.ground?'g':Math.round((d.alt||0)/1000))+'|'+(emgOf(d)?'E':'')+(holdOf(hexOf(d))?'H':'')+(selected?1:0)+'|'+(z>=6?1:0)+'|'+(z>=8?(d.call||d.hex):'');
+    return Math.round((d.trk||0)/5)+'|'+(d.ground?'g':Math.round((d.alt||0)/1000))+'|'+(emgOf(d)?'E':'')+(holdOf(hexOf(d))?'H':'')+(rescueOf(d)?'R':'')+(selected?1:0)+'|'+(z>=6?1:0)+'|'+(z>=8?(d.call||d.hex):'');
   }
   function iconFor(d, selected, z){
-    var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+(emgOf(d)?' emg':'')+(holdOf(d.hex)?' hld':'')+'" style="color:'+altColor(d)+'">'
+    var html = '<div class="pl'+(selected?' sel':'')+(d.ground?' gnd':'')+(emgOf(d)?' emg':'')+(holdOf(d.hex)?' hld':'')+(rescueOf(d)?' rsc':'')+'" style="color:'+altColor(d)+'">'
       + '<svg viewBox="0 0 24 24" style="transform:rotate('+Math.round(d.trk||0)+'deg)" fill="currentColor"><path d="'+PLANE_PATH+'"/></svg>'
+      + (rescueOf(d) ? '<i class="rcx">✚</i>' : '')
       + (z>=6 ? logoHtml(d,'lg') : '')
       + (z>=8 ? '<span class="lb">'+esc(d.call||d.hex)+'</span>' : '')
       + '</div>';
@@ -977,7 +983,7 @@
       p.hold = holdCalc(p);
       draw(a.hex);
     });
-    holdPill();
+    holdPill(); rscPill();
     Array.from(planes.keys()).forEach(function(hex){
       if(seen.has(hex) || now - planes.get(hex).seen < 60000) return;
       var p = planes.get(hex);
@@ -1074,6 +1080,40 @@
     });
   }
 
+  /* Redningsradar: redningshelikoptre og luftambulanser, gjenkjent på callsign/registrering (mange slår av transponderen, så ikke alle vises) */
+  var rscOn = true; try{ rscOn = localStorage.getItem('flyblikk_rsc') !== '0'; }catch(e){}
+  var RSC_CALL = /^(LIFEGUARD|MEDEVAC|RESCUE|RESQ|RESCU|SAR\d|HELIMED|AMBU|AIRAMB|AIRAMBU|CHRISTOPH|RETTUNG|SAMU|REGA|NLA\d|NORAMB|LUFTAMB|HEMS|RTH|DRF\d|DANRES|LAMB|MEDI|MEDIC|NHV|SVT\d)/;
+  var RSC_REG = /^(LN-OO|LN-ON[A-Z]|OY-H[A-Z]{2}|SE-J[A-Z]{2})/;
+  function rescueOf(d){
+    if(!rscOn || !d) return '';
+    var c = (d.call||'').toUpperCase(), r = (d.reg||'').toUpperCase(), heli = d.cat==='A7' || /^(H60|S61|S92|EC35|EC45|EC30|A139|A109|A119|B412|B429|NH90|AS65|H135|H145|MD90|S76|AS55|B06|B407)$/.test(d.type||'');
+    if(/^(LIFEGUARD|MEDEVAC|AIRAMB|AIRAMBU)/.test(c)) return 'Ambulanse / medevac';
+    if(RSC_CALL.test(c) && (heli || /^(RESCUE|SAR\d|HELIMED|CHRISTOPH|RETTUNG|REGA|NLA|HEMS|RTH|DANRES)/.test(c))) return heli ? 'Redningshelikopter / luftambulanse' : 'Redning / ambulanse';
+    if(heli && RSC_REG.test(r) && /^LN-OO/.test(r)) return 'Luftambulanse (Norsk Luftambulanse)';
+    return '';
+  }
+  var rscBox = null, rscIdx = 0;
+  function rscPill(){
+    var list = []; planes.forEach(function(p){ if(p.d && rescueOf(p.d)) list.push(p); });
+    if(!rscBox){
+      rscBox = document.createElement('button'); rscBox.type = 'button'; rscBox.id = 'rscBox';
+      rscBox.addEventListener('click', function(){
+        var l = []; planes.forEach(function(p){ if(p.d && rescueOf(p.d)) l.push(p); });
+        if(!l.length) return; var p = l[rscIdx++ % l.length];
+        if(p.marker) map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 9), {animate:false}); select(p.d.hex);
+      });
+      document.body.appendChild(rscBox);
+    }
+    rscBox.style.display = list.length ? 'block' : 'none';
+    rscBox.textContent = '✚ ' + list.length + (list.length===1 ? ' redning/ambulanse' : ' redning/ambulanse');
+    var n = document.getElementById('rscNote'); if(n) n.textContent = rscOn ? (list.length ? list.length+' redningsfly med posisjonsdata akkurat nå.' : 'Ingen redningsfly med posisjonsdata akkurat nå. Mange redningshelikoptre slår av transponderen på oppdrag.') : '';
+  }
+  function rscApply(){
+    $('#bRsc').classList.toggle('on', rscOn);
+    try{ localStorage.setItem('flyblikk_rsc', rscOn ? '1' : '0'); }catch(e){}
+    planes.forEach(function(p){ if(p.d){ p.ikey = null; draw(p.d.hex); } });
+    rscPill();
+  }
   /* Holding-mønstre: fly som sirkler (samlet svinging >= 300° på lite område, lav høyde) */
   function hexOf(d){ return d && d.hex; }
   function holdOf(hex){ var p = planes.get(hex); return p && p.hold ? p.hold : 0; }
@@ -1173,6 +1213,7 @@
     var em = emergency(d.squawk);
     var chips = (fno ? '<span class="chip">'+esc(fno)+'</span>' : '')
       + (tcode ? '<span class="chip blue">'+esc(tcode)+'</span>' : '')
+      + (rescueOf(d) ? '<span class="chip red">✚ '+esc(rescueOf(d))+'</span>' : '')
       + (holdOf(d.hex) ? '<span class="chip" style="border-color:#59d0ff;color:#59d0ff">⟳ Holding (venter)</span>' : '')
       + (em ? '<span class="chip red">'+esc(em)+'</span>' : '');
     var photoUrl = a && (a.url_photo_thumbnail || a.url_photo);
@@ -2633,6 +2674,8 @@
     clearInterval(atcTimer);
     if(atcOn){ atcDraw(); atcTimer = setInterval(atcDraw, 1000); }
   }
+  $('#bRsc').onclick = function(){ rscOn = !rscOn; rscApply(); };
+  rscApply();
   $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
   map.on('move zoom resize', function(){ if(atcOn){ cancelAnimationFrame(atcRaf); atcRaf = requestAnimationFrame(atcDraw); } });
   map.on('click', function(e){
