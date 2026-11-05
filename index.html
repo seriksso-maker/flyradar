@@ -88,7 +88,8 @@
   #skyv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
   #skyc{position:absolute;left:0;top:0}
   #skycards{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
-  .skc{position:absolute;left:0;top:0;width:min(56vw,300px);pointer-events:auto;font-family:var(--ui);filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));will-change:transform}
+  .skc{position:absolute;left:0;top:0;width:min(56vw,300px);pointer-events:auto;font-family:var(--ui);filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));will-change:transform;animation:skIn .25s ease-out both}
+  @keyframes skIn{from{opacity:0}to{opacity:1}}
   .skc .bx{border-radius:10px;overflow:hidden;background:#eee;color:#222}
   .skc .bx.sel{outline:2px solid #fff;outline-offset:-1px}
   .skc .hd2{display:flex;align-items:stretch;background:#4a4a4a;min-height:38px}
@@ -2825,8 +2826,21 @@
     skyOri = {a:a, b:e.beta, g:e.gamma||0, abs:abs, t:performance.now()};
   }
 
+  var skyOriS = null, skyOriT = 0;
+  // Glatter sensorene (eksponentiell filtrering, tidsbasert) så bildet ikke rister
+  function skySmooth(ts){
+    var o = skyOri; if(!o) return;
+    if(!skyOriS){ skyOriS = {a:o.a, b:o.b, g:o.g}; skyOriT = ts; return; }
+    var dt = Math.min(100, Math.max(1, ts - skyOriT)); skyOriT = ts;
+    var k = 1 - Math.exp(-dt/70), S = skyOriS;
+    var da = ((o.a - S.a + 540) % 360) - 180, dg = ((o.g - S.g + 540) % 360) - 180, db = ((o.b - S.b + 540) % 360) - 180;
+    // Ikke rør bildet for helt små sensorsprang
+    if(Math.abs(da) > .08) S.a = (S.a + da*k + 360) % 360;
+    if(Math.abs(db) > .08) S.b += db*k;
+    if(Math.abs(dg) > .08) S.g += dg*k;
+  }
   function skyBasis(){
-    var o = skyOri, a = o.a*RAD, b = o.b*RAD, g = o.g*RAD;
+    var o = skyOriS || skyOri, a = o.a*RAD, b = o.b*RAD, g = o.g*RAD;
     var cA = Math.cos(a), sA = Math.sin(a), cB = Math.cos(b), sB = Math.sin(b), cG = Math.cos(g), sG = Math.sin(g);
     var X = [cA*cG - sA*sB*sG, cG*sA + cA*sB*sG, -cB*sG];     // skjermens høyre (enhetens x) i Ø,N,Opp
     var Y = [-cB*sA, cA*cB, sB];                               // enhetens y (opp på skjermen i stående)
@@ -2858,7 +2872,8 @@
     if(!skyOn) return;
     skyRaf = requestAnimationFrame(skyLoop);
     if(skyPaused) return;
-    if(ts - skyLast < 40) return; skyLast = ts;
+    if(ts - skyLast < 14) return; skyLast = ts;
+    skySmooth(ts);
     var cv = $('#skyc'), W = window.innerWidth, H = window.innerHeight, dpr = Math.min(window.devicePixelRatio||1, 2);
     if(cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); cv.style.width = W+'px'; cv.style.height = H+'px'; skyCtx = cv.getContext('2d'); }
     var c = skyCtx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
@@ -2910,8 +2925,9 @@
     if(skySel){ all.forEach(function(t){ if(t.p.d.hex === skySel) ft = t; }); }
     if(!ft){ var bd = 1e9; vis.forEach(function(o){ var dd = Math.hypot(o.x - W/2, o.y - H/2); if(dd < bd){ bd = dd; ft = o.t; } }); }
     skyLabel(ft);
-    skyDrawMini(all, hdg);
+    if((skyFrame = (skyFrame + 1) % 3) === 0) skyDrawMini(all, hdg);
   }
+  var skyFrame = 0;
   var skyFilter = false, skyDenied = false;
 
   function skyLabel(t){
@@ -2956,7 +2972,10 @@
       if(!el){ el = document.createElement('div'); el.className = 'skc'; el.setAttribute('data-hex', hex); box.appendChild(el); skyCards.set(hex, el); }
       if(el._h !== html){ el._h = html; el.innerHTML = html; }
       el.style.zIndex = skySel === hex ? 100 : 40 - i;
-      el.style.transform = 'translate3d(' + Math.round(o.x) + 'px,' + Math.round(o.y + 22) + 'px,0) translateX(-50%)';
+      var tx = o.x, ty = o.y + 22;
+      if(el._px === undefined || Math.abs(tx - el._px) > 160 || Math.abs(ty - el._py) > 160){ el._px = tx; el._py = ty; }
+      else { el._px += (tx - el._px)*0.55; el._py += (ty - el._py)*0.55; }
+      el.style.transform = 'translate3d(' + el._px.toFixed(1) + 'px,' + el._py.toFixed(1) + 'px,0) translateX(-50%)';
     });
     skyCards.forEach(function(el, hex){ if(!keep[hex]){ el.remove(); skyCards.delete(hex); } });
   }
@@ -3081,7 +3100,7 @@
 
   function skyStart(){
     if(skyOn) return;
-    var el = $('#sky'), msg = $('#skymsg'); el.hidden = false; skyOn = true; skyOri = null; skyT0 = performance.now(); skyLast = 0; skyPaused = false; skyMmS = 0;
+    var el = $('#sky'), msg = $('#skymsg'); el.hidden = false; skyOn = true; skyOri = null; skyOriS = null; skyT0 = performance.now(); skyLast = 0; skyPaused = false; skyMmS = 0;
     $('#skypause').innerHTML = SKY_PAUSE; skySetMode(skyMode); skySetRange((skyRange - 10)/210);
     msg.textContent = 'Starter …'; msg.hidden = false;
     var ask = (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') ? DeviceOrientationEvent.requestPermission().catch(function(){ return 'denied'; }) : Promise.resolve('granted');
