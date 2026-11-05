@@ -161,6 +161,9 @@
   .gt{min-width:34px;padding:3px 6px;border-radius:10px;text-align:center;font:700 14px var(--mono);color:#fff;border:1px solid rgba(255,255,255,.35);box-shadow:0 2px 8px rgba(0,0,0,.4);opacity:.9;margin:6px}
   .gw{display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 1px 3px #000)}
   .gw b{font:700 12px var(--mono);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;margin-top:-4px}
+  body.atc .pl{display:none}
+  body.atc .leaflet-tile-pane{filter:grayscale(.85) brightness(.32) sepia(.4) hue-rotate(90deg)}
+  body.atc .ap{display:none}
   .note{padding:10px 14px;color:var(--mute);font-size:12px}
 
   .plane{background:none;border:0}
@@ -300,6 +303,9 @@
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Hopp til område</h3>
   <div class="chips2" id="regChips"><button type="button" data-r="54,12,5">Europa</button><button type="button" data-r="39,-98,4">Nord-Amerika</button><button type="button" data-r="40.7,-74,7">New York</button><button type="button" data-r="34,-118.2,7">Los Angeles</button><button type="button" data-r="41.9,-87.9,7">Chicago</button><button type="button" data-r="25.8,-80.3,7">Miami</button></div>
+  <h3 style="margin-top:14px">Flygeleder</h3>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button></div>
+  <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
   <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button><button type="button" id="bWind">Vind (kt)</button><button type="button" id="bTemp">Temperatur</button><button type="button" id="bHeat">Trafikkvarmekart</button></div>
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
@@ -2411,6 +2417,137 @@
   $('#bHeat').onclick = function(){ heatOn = !heatOn; heatApply(); if(heatOn) radarNote('Trafikkvarmekart: jo rødere, jo flere fly. Viser flyene som er lastet inn nå.'); else radarNote(''); };
   map.on('zoomend', heatUpd);
   heatApply();
+  /* Flygeledermodus: radarskjerm med datablokker, vektorer, historikk og konfliktvarsel */
+  var atcOn = false, atcCv = null, atcCx = null, atcTimer = 0, atcRaf = 0, atcHits = [], atcConf = [];
+  function atcInit(){
+    if(atcCv) return;
+    atcCv = document.createElement('canvas'); atcCv.id = 'atcCv';
+    atcCv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:450;pointer-events:none';
+    mapEl.appendChild(atcCv); atcCx = atcCv.getContext('2d');
+    var hud = document.createElement('div'); hud.id = 'atcHud';
+    hud.style.cssText = 'position:absolute;left:10px;top:64px;z-index:460;font:600 12px var(--mono);color:#7dffb0;text-shadow:0 0 4px #000;pointer-events:none;line-height:1.5;display:none';
+    mapEl.appendChild(hud);
+  }
+  function atcFL(d){
+    if(d.ground) return 'GND';
+    if(d.alt==null) return '---';
+    var h = Math.round(d.alt/100);
+    return d.alt >= 18000 ? 'FL'+String(h).padStart(3,'0') : 'A'+String(h).padStart(3,'0');
+  }
+  function atcNearApt(){
+    var c = map.getCenter(), best = null, bd = 1e9;
+    AIRPORTS.forEach(function(a){ var d = km(c.lat, c.lng, a[2], a[3]); if(d < bd){ bd = d; best = a; } });
+    return bd < 400 ? best : null;
+  }
+  function atcDraw(){
+    if(!atcOn || !atcCv) return;
+    var dpr = window.devicePixelRatio || 1, sz = map.getSize(), W = sz.x, H = sz.y;
+    if(atcCv.width !== Math.round(W*dpr) || atcCv.height !== Math.round(H*dpr)){ atcCv.width = Math.round(W*dpr); atcCv.height = Math.round(H*dpr); }
+    var c = atcCx; c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,W,H);
+    var z = map.getZoom(), mono = '11px ui-monospace,Menlo,Consolas,monospace';
+    // Avstandsringer rundt nærmeste flyplass
+    var ap = atcNearApt();
+    if(ap){
+      var P = map.latLngToContainerPoint([ap[2], ap[3]]);
+      var mpp = 40075016.686*Math.cos(ap[2]*Math.PI/180)/Math.pow(2, z+8);
+      c.lineWidth = 1; c.font = mono; c.textAlign = 'left';
+      [5,10,20,40,80,160].forEach(function(nm){
+        var r = nm*1852/mpp; if(r < 24 || r > Math.max(W,H)*1.6) return;
+        c.strokeStyle = 'rgba(80,200,140,.28)'; c.beginPath(); c.arc(P.x, P.y, r, 0, 7); c.stroke();
+        c.fillStyle = 'rgba(110,230,170,.6)'; c.fillText(nm+' NM', P.x + 4, P.y - r - 3);
+      });
+      c.strokeStyle = 'rgba(80,200,140,.2)';
+      c.beginPath(); c.moveTo(P.x-18, P.y); c.lineTo(P.x+18, P.y); c.moveTo(P.x, P.y-18); c.lineTo(P.x, P.y+18); c.stroke();
+      c.fillStyle = '#7dffb0'; c.font = '600 12px ui-monospace,Menlo,Consolas,monospace'; c.fillText(ap[0], P.x+8, P.y+16);
+    }
+    // Flyplasser
+    c.font = '10px ui-monospace,Menlo,Consolas,monospace';
+    AIRPORTS.forEach(function(a){
+      var q = map.latLngToContainerPoint([a[2], a[3]]); if(q.x<-20||q.y<-20||q.x>W+20||q.y>H+20) return;
+      c.strokeStyle = 'rgba(125,255,176,.7)'; c.strokeRect(q.x-3.5, q.y-3.5, 7, 7);
+      if(z >= 6 || a[4]){ c.fillStyle = 'rgba(125,255,176,.75)'; c.fillText(a[0], q.x+7, q.y+3); }
+    });
+    // Mål
+    var tg = [], now = performance.now();
+    planes.forEach(function(p){
+      var d = p.d; if(!d || !p.marker || !p.marker._map) return;
+      var ll = p.marker.getLatLng(); var q = map.latLngToContainerPoint(ll);
+      if(q.x<-30||q.y<-30||q.x>W+30||q.y>H+30) return;
+      if(d.ground && z < 9 && !(ap && km(ll.lat, ll.lng, ap[2], ap[3]) < 6) && d.hex!==sel) return;
+      tg.push({p:p, d:d, ll:ll, q:q});
+    });
+    // Konfliktvarsel: lateralt < 5 NM og vertikalt < 1000 ft innen 2 minutter
+    var conf = {}, pairs = [], air = tg.filter(function(t){ return !t.d.ground && t.d.alt!=null && t.d.gs>60; });
+    if(air.length < 500){
+      var kx = Math.cos(map.getCenter().lat*Math.PI/180);
+      var vel = air.map(function(t){ var r = (t.d.trk||0)*Math.PI/180, v = t.d.gs*0.514444/1852; return [t.ll.lng*60*kx, t.ll.lat*60, Math.sin(r)*v*kx/1, Math.cos(r)*v]; }); // i NM og NM/s
+      for(var i=0;i<air.length;i++) for(var j=i+1;j<air.length;j++){
+        var dx = vel[i][0]-vel[j][0], dy = vel[i][1]-vel[j][1];
+        if(Math.abs(dx) > 40 || Math.abs(dy) > 40) continue;
+        var rvx = vel[i][2]-vel[j][2], rvy = vel[i][3]-vel[j][3], hit = false;
+        for(var s2=0; s2<=120; s2+=10){
+          var ex = dx + rvx*s2, ey = dy + rvy*s2, vi = air[i].d.alt + (air[i].d.vr||0)*s2/60, vj = air[j].d.alt + (air[j].d.vr||0)*s2/60;
+          if(Math.hypot(ex, ey) < 5 && Math.abs(vi-vj) < 1000){ hit = true; break; }
+        }
+        if(hit){ conf[air[i].d.hex] = 1; conf[air[j].d.hex] = 1; pairs.push([air[i].d, air[j].d]); }
+      }
+    }
+    atcConf = pairs;
+    var blink = Math.floor(now/500)%2 === 0;
+    atcHits = [];
+    var showBlocks = tg.length < 220 || z >= 7;
+    tg.forEach(function(t){
+      var d = t.d, q = t.q, isSel = d.hex===sel, bad = !!conf[d.hex];
+      var col = isSel ? '#59d0ff' : bad ? '#ff4d4d' : d.ground ? '#5c8f78' : '#7dffb0';
+      // Historikk (siste posisjoner)
+      var tr = t.p.trail || [];
+      for(var k=Math.max(0,tr.length-6); k<tr.length-1; k++){
+        var hp = map.latLngToContainerPoint(tr[k]), fade = (k-(tr.length-7))/6;
+        c.fillStyle = 'rgba(125,255,176,'+(0.15+0.4*Math.max(0,fade))+')'; c.fillRect(hp.x-1.5, hp.y-1.5, 3, 3);
+      }
+      // Fartsvektor (1 minutt)
+      if(!d.ground && d.gs>30){
+        var r = (d.trk||0)*Math.PI/180, nm = d.gs/60, dLat = nm*Math.cos(r)/60, dLon = nm*Math.sin(r)/(60*Math.max(.1,Math.cos(t.ll.lat*Math.PI/180)));
+        var vp = map.latLngToContainerPoint([t.ll.lat+dLat, t.ll.lng+dLon]);
+        c.strokeStyle = col; c.globalAlpha = .7; c.lineWidth = 1; c.beginPath(); c.moveTo(q.x, q.y); c.lineTo(vp.x, vp.y); c.stroke(); c.globalAlpha = 1;
+      }
+      // Symbol
+      c.strokeStyle = col; c.lineWidth = isSel ? 2 : 1.4; c.fillStyle = col;
+      if(bad && !blink){ c.fillStyle = '#fff'; }
+      c.strokeRect(q.x-4, q.y-4, 8, 8); c.fillRect(q.x-1.5, q.y-1.5, 3, 3);
+      if(isSel || bad){ c.beginPath(); c.arc(q.x, q.y, 11, 0, 7); c.stroke(); }
+      // Datablokk
+      if(showBlocks || isSel){
+        var tr2 = d.vr==null ? '' : d.vr > 300 ? '↑' : d.vr < -300 ? '↓' : '→';
+        var l1 = (d.call || d.hex.toUpperCase()), l2 = atcFL(d)+tr2+' '+(d.gs!=null ? Math.round(d.gs/10) : '--'), bx = q.x+16, by = q.y-16;
+        c.strokeStyle = col; c.globalAlpha = .55; c.lineWidth = 1; c.beginPath(); c.moveTo(q.x+4, q.y-4); c.lineTo(bx-2, by+2); c.stroke(); c.globalAlpha = 1;
+        c.font = '600 11px ui-monospace,Menlo,Consolas,monospace'; c.fillStyle = col; c.textAlign = 'left';
+        c.fillText(l1, bx, by); c.font = '11px ui-monospace,Menlo,Consolas,monospace'; c.fillText(l2, bx, by+12);
+      }
+      atcHits.push({hex:d.hex, x:q.x, y:q.y});
+    });
+    var hud = document.getElementById('atcHud');
+    var u = new Date(), p2 = function(n){ return String(n).padStart(2,'0'); };
+    hud.innerHTML = 'FLYGELEDER · '+p2(u.getUTCHours())+':'+p2(u.getUTCMinutes())+':'+p2(u.getUTCSeconds())+'Z<br>MÅL '+tg.length+(ap ? ' · '+ap[0] : '')
+      + (pairs.length ? '<br><span style="color:#ff4d4d;'+(blink?'':'opacity:.35')+'">⚠ KONFLIKT: '+pairs.slice(0,3).map(function(pr){ return esc((pr[0].call||pr[0].hex)+' ↔ '+(pr[1].call||pr[1].hex)); }).join(' · ')+(pairs.length>3?' …':'')+'</span>' : '<br><span style="opacity:.6">Ingen konflikter</span>');
+  }
+  function atcApply(){
+    atcInit();
+    $('#bAtc').classList.toggle('on', atcOn); $('#atcNote').hidden = !atcOn;
+    document.body.classList.toggle('atc', atcOn);
+    document.getElementById('atcHud').style.display = atcOn ? 'block' : 'none';
+    atcCv.style.display = atcOn ? 'block' : 'none';
+    clearInterval(atcTimer);
+    if(atcOn){ atcDraw(); atcTimer = setInterval(atcDraw, 1000); }
+  }
+  $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
+  map.on('move zoom resize', function(){ if(atcOn){ cancelAnimationFrame(atcRaf); atcRaf = requestAnimationFrame(atcDraw); } });
+  map.on('click', function(e){
+    if(!atcOn) return;
+    var best = null, bd = 22*22;
+    atcHits.forEach(function(h){ var dd = (h.x-e.containerPoint.x)*(h.x-e.containerPoint.x) + (h.y-e.containerPoint.y)*(h.y-e.containerPoint.y); if(dd < bd){ bd = dd; best = h; } });
+    if(best) select(best.hex);
+  });
   /* TV-modus + veiledning for Chromecast/skjermdeling */
   var wakeLock = null;
   $('#regChips').addEventListener('click', function(e){
