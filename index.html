@@ -301,7 +301,7 @@
   <h3 style="margin-top:14px">Hopp til område</h3>
   <div class="chips2" id="regChips"><button type="button" data-r="54,12,5">Europa</button><button type="button" data-r="39,-98,4">Nord-Amerika</button><button type="button" data-r="40.7,-74,7">New York</button><button type="button" data-r="34,-118.2,7">Los Angeles</button><button type="button" data-r="41.9,-87.9,7">Chicago</button><button type="button" data-r="25.8,-80.3,7">Miami</button></div>
   <h3 style="margin-top:14px">Vær</h3>
-  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button><button type="button" id="bWind">Vind (kt)</button><button type="button" id="bTemp">Temperatur</button></div>
+  <div class="chips2"><button type="button" id="bRadar">Værradar (nedbør)</button><button type="button" id="bClouds">Skydekke (satellitt)</button><button type="button" id="bWind">Vind (kt)</button><button type="button" id="bTemp">Temperatur</button><button type="button" id="bHeat">Trafikkvarmekart</button></div>
   <div id="radarNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden></div>
 </div>
 
@@ -2378,6 +2378,39 @@
   $('#bTemp').onclick = function(){ gridMode = gridMode==='temp' ? '' : 'temp'; gridGroup.clearLayers(); gridApply(); };
   map.on('moveend', function(){ if(!gridMode) return; clearTimeout(gridDeb); gridDeb = setTimeout(gridLoad, 700); });
   gridApply();
+  /* Trafikkvarmekart: tetthet av fly som er lastet inn nå */
+  var heatOn = false, heatLayer = null, heatTimer = null, heatLoading = false;
+  try{ heatOn = localStorage.getItem('flyblikk_heat') === '1'; }catch(e){}
+  function heatPts(){
+    var pts = []; planes.forEach(function(p){ var d = p.d; if(d && d.lat!=null && !d.ground) pts.push([d.lat, d.lon, 1]); });
+    return pts;
+  }
+  function heatUpd(){
+    if(!heatOn || !heatLayer) return;
+    var z = map.getZoom();
+    heatLayer.setOptions({radius: Math.round(14 + z*3.2), blur: Math.round(12 + z*2.2), max: Math.max(1, 14 - z*1.3), minOpacity: .25});
+    heatLayer.setLatLngs(heatPts());
+  }
+  function heatApply(){
+    $('#bHeat').classList.toggle('on', heatOn);
+    try{ localStorage.setItem('flyblikk_heat', heatOn ? '1' : '0'); }catch(e){}
+    clearInterval(heatTimer);
+    if(!heatOn){ if(heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer); return; }
+    function go(){
+      if(!heatLayer) heatLayer = L.heatLayer([], {gradient:{0.2:'#2b6cff', 0.4:'#18d6d6', 0.6:'#6be08f', 0.8:'#ffd23f', 1:'#ff3b30'}});
+      if(heatOn && !map.hasLayer(heatLayer)) heatLayer.addTo(map);
+      heatUpd(); heatTimer = setInterval(heatUpd, 3000);
+    }
+    if(window.L && L.heatLayer) return go();
+    if(heatLoading) return; heatLoading = true;
+    var sc = document.createElement('script'); sc.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+    sc.onload = function(){ heatLoading = false; go(); };
+    sc.onerror = function(){ heatLoading = false; heatOn = false; $('#bHeat').classList.remove('on'); radarNote('Fikk ikke lastet varmekart-modulen'); };
+    document.head.appendChild(sc);
+  }
+  $('#bHeat').onclick = function(){ heatOn = !heatOn; heatApply(); if(heatOn) radarNote('Trafikkvarmekart: jo rødere, jo flere fly. Viser flyene som er lastet inn nå.'); else radarNote(''); };
+  map.on('zoomend', heatUpd);
+  heatApply();
   /* TV-modus + veiledning for Chromecast/skjermdeling */
   var wakeLock = null;
   $('#regChips').addEventListener('click', function(e){
