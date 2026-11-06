@@ -1009,6 +1009,18 @@
     if(!p.marker._map) p.marker.addTo(map);
   }
 
+  var pendFly = null;
+  (function(){
+    try{
+      var q = new URLSearchParams(location.search), h = (q.get('fly')||'').toLowerCase();
+      if(/^[0-9a-f]{6}$/.test(h)){
+        pendFly = h;
+        var ll = (q.get('ll')||'').split(',').map(Number), z = Number(q.get('z'))||8;
+        if(ll.length===2 && isFinite(ll[0]) && isFinite(ll[1])) map.setView(ll, z, {animate:false});
+        setTimeout(function(){ if(pendFly && !sel){ pendFly = null; var se = document.getElementById('stat'); if(se) se.textContent = 'Fant ikke det delte flyet (landet eller utenfor dekning)'; } }, 60000);
+      }
+    }catch(e){}
+  })();
   function apply(list){
     var now = performance.now(), seen = new Set();
     refreshView();
@@ -1024,6 +1036,7 @@
       draw(a.hex);
     });
     holdPill(); rscPill();
+    if(pendFly && planes.has(pendFly)){ var pf = pendFly; pendFly = null; select(pf); var pp = planes.get(pf); if(pp) map.setView([pp.d.lat, pp.d.lon], Math.max(map.getZoom(), 8), {animate:false}); }
     Array.from(planes.keys()).forEach(function(hex){
       if(seen.has(hex) || now - planes.get(hex).seen < (hex===sel && cockOn ? 900000 : 60000)) return;
       var p = planes.get(hex);
@@ -1392,6 +1405,7 @@
       + '<button id="bCock" type="button">Cockpit</button>'
       + '<button id="bSim" type="button">3D</button>'
       + '<button id="bMore" type="button" class="'+(more?'on':'')+'">Mer info</button>'
+      + '<button id="bShare" type="button">Del</button>'
       + '<button id="bFollow" type="button" class="'+(follow?'on':'')+'">Følg</button></div>';
 
     $('#close').onclick = function(){ select(null); };
@@ -1399,12 +1413,24 @@
     $('#bCock').onclick = openCockpit;
     $('#bSim').onclick = openSim;
     $('#bMore').onclick = function(){ more = !more; renderPanel(); };
+    $('#bShare').onclick = function(){ shareFly(p); };
     $('#bFollow').onclick = function(){
       follow = !follow;
       if(follow && p.marker){ progPan = true; map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 8), {animate:false}); progPan = false; }
       renderPanel();
     };
     el.scrollTop = st;
+  }
+
+  function shareFly(p){
+    var d = p.d, u = location.origin + location.pathname + '?fly=' + encodeURIComponent(d.hex) + '&ll=' + d.lat.toFixed(3) + ',' + d.lon.toFixed(3) + '&z=' + Math.max(7, Math.min(10, map.getZoom()));
+    var t = (d.call || d.hex.toUpperCase()) + ' – FLYBLIKK';
+    function copied(){ var b = $('#bShare'); if(b){ b.textContent = 'Kopiert ✓'; setTimeout(function(){ var b2 = $('#bShare'); if(b2) b2.textContent = 'Del'; }, 2000); } }
+    function fallback(){
+      try{ navigator.clipboard.writeText(u).then(copied, function(){ prompt('Kopier lenken:', u); }); }catch(e){ prompt('Kopier lenken:', u); }
+    }
+    if(navigator.share){ navigator.share({title:t, text:'Følg ' + (d.call || 'flyet') + ' direkte på kartet', url:u}).catch(function(e){ if(!e || e.name!=='AbortError') fallback(); }); }
+    else fallback();
   }
 
   function lookup(d){
