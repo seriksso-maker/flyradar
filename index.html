@@ -1029,7 +1029,9 @@
       seen.add(a.hex);
       var p = planes.get(a.hex);
       if(!p){ p = {trail:[]}; planes.set(a.hex, p); }
-      p.d = a; p.seen = now; p.t0 = now; p.lat0 = a.lat; p.lon0 = a.lon;
+      var moved = !p.d || p.lat0!==a.lat || p.lon0!==a.lon;
+      p.d = a; p.seen = now;
+      if(moved || p.t0==null){ p.t0 = now; p.lat0 = a.lat; p.lon0 = a.lon; }
       var last = p.trail[p.trail.length-1];
       if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon,a.alt]); if(p.trail.length>80) p.trail.shift(); }
       p.hold = holdCalc(p);
@@ -1844,8 +1846,9 @@
      innflygingen som simulering (rett fram langs kursen, nedstigning, touchdown og utrulling) */
   function deadReckon(p, dt){
     var d = p.d, now = performance.now(), age = (now - p.t0)/1000;
-    if(age < 10 || d.ground){ p.dead = null; return null; }
+    if(d.ground || (p.dead && d.alt!=null && d.alt > p.dead.alt + 400 && (d.vr||0) > 300)){ p.dead = null; return null; }
     var dd = p.dead;
+    if(!dd && age < 10) return null;
     if(!dd){
       if(!(d.alt!=null && d.alt < 6000 && d.gs > 60 && d.gs < 260) || (d.vr!=null && d.vr > 300)) return null;
       var ps = [p.lat0 + d.gs*0.514444*age*Math.cos((d.trk||0)*RAD)/111320, p.lon0 + d.gs*0.514444*age*Math.sin((d.trk||0)*RAD)/(111320*Math.cos(p.lat0*RAD))], ok = false;
