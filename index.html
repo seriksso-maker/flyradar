@@ -1025,7 +1025,7 @@
     });
     holdPill(); rscPill();
     Array.from(planes.keys()).forEach(function(hex){
-      if(seen.has(hex) || now - planes.get(hex).seen < 60000) return;
+      if(seen.has(hex) || now - planes.get(hex).seen < (hex===sel && cockOn ? 900000 : 60000)) return;
       var p = planes.get(hex);
       if(p.marker) p.marker.remove();
       planes.delete(hex);
@@ -1814,6 +1814,39 @@
     }
     S.r.render(S.scene, S.cam3);
   }
+  /* Signaltap på innflyging: mottakerne mister ofte flyet like før landing. Da fortsetter vi
+     innflygingen som simulering (rett fram langs kursen, nedstigning, touchdown og utrulling) */
+  function deadReckon(p, dt){
+    var d = p.d, now = performance.now(), age = (now - p.t0)/1000;
+    if(age < 10 || d.ground){ p.dead = null; return null; }
+    var dd = p.dead;
+    if(!dd){
+      if(!(d.alt!=null && d.alt < 6000 && d.gs > 60 && d.gs < 260) || (d.vr!=null && d.vr > 300)) return null;
+      var ps = [p.lat0 + d.gs*0.514444*age*Math.cos((d.trk||0)*RAD)/111320, p.lon0 + d.gs*0.514444*age*Math.sin((d.trk||0)*RAD)/(111320*Math.cos(p.lat0*RAD))], ok = false;
+      AIRPORTS.forEach(function(a){
+        var dist = km(ps[0], ps[1], a[2], a[3]);
+        if(dist < 30 && Math.abs(angDiff(d.trk||0, bearing(ps[0], ps[1], a[2], a[3]))) < 50) ok = true;
+      });
+      if(!ok) return null;
+      var vr = (d.vr!=null && d.vr < -300) ? Math.max(d.vr, -1800) : -d.gs*5.3;
+      dd = p.dead = {lat:ps[0], lon:ps[1], alt:Math.max(0, d.alt + vr*age/60), vr:vr, gs:d.gs, gsTD:Math.min(d.gs, 138), phase:'air', t:0, stop:0};
+    }
+    dd.t += dt;
+    var step = dd.gs*0.514444*dt, r = (d.trk||0)*RAD;
+    dd.lat += step*Math.cos(r)/111320; dd.lon += step*Math.sin(r)/(111320*Math.cos(dd.lat*RAD));
+    if(dd.phase === 'air'){
+      dd.alt += dd.vr*dt/60; dd.gs += (dd.gsTD - dd.gs)*Math.min(1, dt*0.08);
+      var g = null; try{ g = cmap && cmap.queryTerrainElevation([dd.lon, dd.lat]); }catch(e){}
+      var gf = g!=null ? g/0.3048 : 0;
+      if(dd.alt <= gf + 12 || dd.alt <= 0){ dd.phase = 'roll'; dd.vr = 0; dd.alt = gf; }
+    } else if(dd.phase === 'roll'){
+      dd.gs = Math.max(0, dd.gs - 3.2*dt);
+      if(dd.gs < 25){ dd.stop += dt; if(dd.stop > 6) dd.phase = 'stop'; }
+    } else { dd.gs = 0; }
+    var nd = {}; for(var k in d) nd[k] = d[k];
+    nd.lat = dd.lat; nd.lon = dd.lon; nd.gs = dd.gs; nd.vr = dd.vr; nd.alt = dd.alt; nd.ground = dd.phase !== 'air'; nd.ias = dd.gs;
+    return {d:nd, pos:[dd.lat, dd.lon], phase:dd.phase};
+  }
   function cockLoop(ts){
     if(!cockOn) return;
     cockRaf = requestAnimationFrame(cockLoop);
@@ -1822,7 +1855,11 @@
     var p = planes.get(sel), msg = $('#cmsg');
     if(!p){ msg.textContent = 'Signalet fra flyet er borte'; msg.hidden = false; return; }
     if(msg.textContent === 'Signalet fra flyet er borte') msg.hidden = true;
-    var d = p.d, pos = planePos(p), at = attitude(d);
+    var d = p.d, pos, dr = deadReckon(p, dt);
+    if(dr){ d = dr.d; pos = dr.pos; } else pos = planePos(p);
+    var at = attitude(d);
+    var dmsg = dr ? (dr.phase === 'air' ? 'Signalet fra flyet er tapt. Innflygingen simuleres videre.' : dr.phase === 'roll' ? 'Simulert landing: utrulling' : 'Landet (simulert)') : '';
+    if(dmsg){ msg.textContent = dmsg; msg.hidden = false; cs.dm = 1; } else if(cs.dm){ cs.dm = 0; msg.hidden = true; }
     // Glatt overgang mellom ADS-B-målingene
     var k = 1 - Math.pow(0.5, dt/0.8);
     var dh = angDiff(cs.hdg, d.trk||0);
