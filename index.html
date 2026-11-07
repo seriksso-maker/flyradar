@@ -1634,7 +1634,7 @@
   function simLivery(d, tailCol, group){
     var T = THREE, code = airOf(d), iata = IATA[code], name = (AIRLINES[code] || '').toUpperCase();
     if(!iata && !name) return;
-    var LV = LIVERY[code] || {}, hex = '#' + ('000000' + tailCol.toString(16)).slice(-6), logoImg = null;
+    var LV = LIVERY[code] || {}, hex = tailCol === 0xf2f5f8 ? '#1f2d3d' : '#' + ('000000' + tailCol.toString(16)).slice(-6), logoImg = null;
     function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r, y); c.arcTo(x+w, y, x+w, y+h, r); c.arcTo(x+w, y+h, x, y+h, r); c.arcTo(x, y+h, x, y, r); c.arcTo(x, y, x+w, y, r); c.closePath(); }
     function contain(c, im, x, y, w, h){ var k = Math.min(w/im.width, h/im.height); c.drawImage(im, x+(w-im.width*k)/2, y+(h-im.height*k)/2, im.width*k, im.height*k); }
     // Skrog: logo + navn, med mørk kontur så det leses mot hvit lakk
@@ -1712,7 +1712,7 @@
     var pr = [[-18.6,0],[-18,.7],[-16.8,1.35],[-14.5,1.85],[-11,2.05],[8,2.05],[12,1.6],[15.5,1.0],[18.2,.45],[18.8,0]];
     var fu = add(new T.LatheGeometry(pr.map(function(q){ return new T.Vector2(q[1], q[0]); }), 28), white); fu.rotation.x = Math.PI/2;
     var ck = add(new T.SphereGeometry(1, 14, 10), dark, 0, .75, -16.4); ck.scale.set(1.25, .55, 1.35);
-    if(!LV.noStripe){ var stripe = add(new T.CylinderGeometry(2.07, 2.07, 1.0, 28, 1, true), tail, 0, 0, -3); stripe.rotation.x = Math.PI/2; }
+    if(!LV.noStripe && tailCol !== 0xf2f5f8){ var stripe = add(new T.CylinderGeometry(2.07, 2.07, 1.0, 28, 1, true), tail, 0, 0, -3); stripe.rotation.x = Math.PI/2; }
     if(LV.nose != null){
       var nm = new T.MeshStandardMaterial({color:LV.nose, roughness:.4, metalness:.1, side:T.DoubleSide});
       var np = pr.filter(function(q){ return q[0] <= -9.5; }).map(function(q){ return new T.Vector2(q[1]*1.012, q[0]); });
@@ -1832,7 +1832,7 @@
     if(S.modelKey !== key){
       if(S.model) S.rig.remove(S.model);
       var colr = [0x1e4b8f, 0xb3261e, 0x0f7a5c, 0x6a3fb5, 0xc77d12][(parseInt(d.hex||'0', 16) || 0) % 5];
-      S.model = simBuildPlane(heli, colr, d); S.rig.add(S.model); S.modelKey = key;
+      S.model = simBuildPlane(heli, heli ? colr : 0xf2f5f8, d); S.rig.add(S.model); S.modelKey = key;
     }
     var rot = S.model.userData.rot; if(rot){ rot.rotation.y += 0.6; S.model.userData.trot.rotation.x += 0.9; }
     S.rig.rotation.set(cs.pitch*RAD, -cs.hdg*RAD, -cs.roll*RAD);
