@@ -1629,33 +1629,51 @@
   function simLivery(d, tailCol, group){
     var T = THREE, code = airOf(d), iata = IATA[code], name = (AIRLINES[code] || '').toUpperCase();
     if(!iata && !name) return;
-    var hex = '#' + ('000000' + tailCol.toString(16)).slice(-6);
-    var cv = document.createElement('canvas'); cv.width = 1024; cv.height = 240; var c = cv.getContext('2d');
-    c.fillStyle = hex; c.textAlign = 'center'; c.textBaseline = 'middle';
-    var txt = name || iata, fs = 150; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif';
-    while(c.measureText(txt).width > 960 && fs > 40){ fs -= 6; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif'; }
-    c.fillText(txt, 512, 125);
-    var tex = new T.CanvasTexture(cv); tex.anisotropy = 4;
+    var hex = '#' + ('000000' + tailCol.toString(16)).slice(-6), logoImg = null;
+    function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r, y); c.arcTo(x+w, y, x+w, y+h, r); c.arcTo(x+w, y+h, x, y+h, r); c.arcTo(x, y+h, x, y, r); c.arcTo(x, y, x+w, y, r); c.closePath(); }
+    function contain(c, im, x, y, w, h){ var k = Math.min(w/im.width, h/im.height); c.drawImage(im, x+(w-im.width*k)/2, y+(h-im.height*k)/2, im.width*k, im.height*k); }
+    // Skrog: logo + navn, med mørk kontur så det leses mot hvit lakk
+    var cv = document.createElement('canvas'); cv.width = 2048; cv.height = 480; var c = cv.getContext('2d');
+    var tex = new T.CanvasTexture(cv); tex.anisotropy = 8;
+    function drawBody(){
+      c.clearRect(0, 0, 2048, 480); c.textAlign = 'left'; c.textBaseline = 'middle';
+      var txt = name || iata, fs = 300, x0 = 40, ls = 0;
+      var lw = logoImg ? 400 : 0;
+      c.font = '800 '+fs+'px Arial,Helvetica,sans-serif';
+      var maxW = 2048 - 80 - (lw ? lw + 50 : 0);
+      while(c.measureText(txt).width > maxW && fs > 80){ fs -= 10; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif'; }
+      var tw = c.measureText(txt).width, total = tw + (lw ? lw + 50 : 0); x0 = (2048 - total)/2;
+      if(logoImg){ c.save(); rr(c, x0, 40, 400, 400, 60); c.clip(); c.fillStyle = '#fff'; c.fillRect(x0, 40, 400, 400); contain(c, logoImg, x0+20, 60, 360, 360); c.restore(); x0 += 450; }
+      c.fillStyle = hex; c.fillText(txt, x0, 250);
+      tex.needsUpdate = true;
+    }
+    drawBody();
     var mk = function(t){ return new T.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}); };
-    var fmat = mk(tex), fg = new T.PlaneGeometry(11.5, 11.5*240/1024);
+    var fmat = mk(tex), fg = new T.PlaneGeometry(13, 13*480/2048);
     var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
     var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
-    // Logo på halefinnen
-    var lc = document.createElement('canvas'); lc.width = lc.height = 256; var lx = lc.getContext('2d');
-    function fallback(){
-      lx.clearRect(0, 0, 256, 256); lx.fillStyle = '#ffffff'; lx.beginPath(); lx.arc(128, 128, 120, 0, 7); lx.fill();
-      lx.fillStyle = hex; lx.font = '800 96px Arial,Helvetica,sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText(iata || code, 128, 136);
+    // Logo på halefinnen: stort, med riktige proporsjoner
+    var lc = document.createElement('canvas'); lc.width = lc.height = 512; var lx = lc.getContext('2d');
+    function drawTail(){
+      lx.clearRect(0, 0, 512, 512);
+      if(logoImg){
+        lx.save(); rr(lx, 16, 16, 480, 480, 90); lx.fillStyle = '#fff'; lx.fill(); lx.clip(); contain(lx, logoImg, 46, 46, 420, 420); lx.restore();
+      } else {
+        lx.fillStyle = '#ffffff'; lx.beginPath(); lx.arc(256, 256, 240, 0, 7); lx.fill();
+        lx.fillStyle = hex; lx.font = '800 190px Arial,Helvetica,sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText(iata || code, 256, 270);
+      }
+      ltex.needsUpdate = true;
     }
-    fallback();
-    var ltex = new T.CanvasTexture(lc), lmat = mk(ltex), lg = new T.PlaneGeometry(3.4, 3.4);
+    var ltex = new T.CanvasTexture(lc); ltex.anisotropy = 8; drawTail();
+    var lmat = mk(ltex), lg = new T.PlaneGeometry(3.8, 3.8);
     var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.4, 15.2); lr.rotation.y = Math.PI/2; group.add(lr);
     var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.4, 15.2); ll.rotation.y = -Math.PI/2; group.add(ll);
     if(iata){
-      var urls = ['https://pics.avs.io/al_square/256/256/'+iata+'.png', 'https://images.kiwi.com/airlines/128x128/'+iata+'.png'], n = 0;
+      var urls = ['https://pics.avs.io/al_square/512/512/'+iata+'.png', 'https://pics.avs.io/512/512/'+iata+'.png', 'https://images.kiwi.com/airlines/256x256/'+iata+'.png'], n = 0;
       (function tryNext(){
         if(n >= urls.length) return;
         var im = new Image(); im.crossOrigin = 'anonymous';
-        im.onload = function(){ try{ lx.clearRect(0, 0, 256, 256); lx.fillStyle = '#fff'; lx.beginPath(); lx.arc(128, 128, 124, 0, 7); lx.fill(); lx.save(); lx.beginPath(); lx.arc(128, 128, 118, 0, 7); lx.clip(); lx.drawImage(im, 10, 10, 236, 236); lx.restore(); ltex.needsUpdate = true; }catch(e){} };
+        im.onload = function(){ try{ logoImg = im; drawTail(); drawBody(); }catch(e){ logoImg = null; } };
         im.onerror = function(){ n++; tryNext(); };
         im.src = urls[n];
       })();
