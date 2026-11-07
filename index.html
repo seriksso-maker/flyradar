@@ -238,6 +238,9 @@
   .sbox{flex:1;position:relative;min-width:0}
   .sbox svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#8a98a6;pointer-events:none}
   .sbox input{width:100%!important;padding-left:38px;min-height:40px;background:#eef1f3;color:#22303c;border:0;border-radius:8px;font-size:15px}
+  #apRes{margin-top:6px;display:flex;flex-direction:column;gap:4px}
+  #apRes button{display:flex;gap:8px;align-items:center;text-align:left;padding:9px 10px}
+  #apRes b{min-width:38px;color:var(--amber)}
   .sbox input::placeholder{color:#7d8b97}
   #air{width:100%;min-width:0}
   .dock{position:absolute;z-index:500;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));width:min(calc(100% - 20px),520px);display:flex;justify-content:space-around;padding:8px 6px 6px;background:rgba(18,26,34,.94);border:1px solid var(--line);border-radius:28px}
@@ -319,7 +322,8 @@
 
 <div class="sheet" id="shQ" hidden>
   <h3>Søk</h3>
-  <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk callsign, reg, type" autocomplete="off" aria-label="Søk etter fly"></div>
+  <div class="sbox"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Søk fly eller flyplass" autocomplete="off" aria-label="Søk etter fly eller flyplass"></div>
+  <div id="apRes"></div>
 </div>
 <div class="sheet" id="shAir" hidden>
   <h3>Filter</h3>
@@ -605,7 +609,7 @@
     m.bindPopup('<b>'+esc(a[1])+'</b> ('+a[0]+')<div class="wxp">Henter vær …</div><div class="apt" style="margin-top:8px;border-top:1px solid #2a3a4a;padding-top:6px"></div>', {minWidth:230});
     m.on('popupopen', function(){ loadAirportWx(a, m); aptLive(a, m, true); });
     m.on('popupclose', function(){ aptLive(a, m, false); });
-    apMarkers.push({m:m, major:!!a[4]});
+    apMarkers.push({m:m, major:!!a[4], a:a});
   });
   function updateAirports(){
     var z = map.getZoom();
@@ -3483,7 +3487,27 @@
   $('#skyL').onclick = function(){ skyOff -= 3; };
   $('#skyR').onclick = function(){ skyOff += 3; };
 
-  $('#q').addEventListener('input', function(e){ filter = e.target.value.trim().toLowerCase(); redrawAll(); });
+  function normS(t){ return String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ø/g,'o').replace(/æ/g,'ae').replace(/å/g,'a'); }
+  function apSearch(v){
+    var box = $('#apRes'); box.innerHTML = '';
+    var t = normS(v.trim()); if(t.length < 2) return;
+    var hits = apMarkers.filter(function(o){ return normS(o.a[0]+' '+o.a[1]).indexOf(t) !== -1; });
+    function sc(o){ var c = normS(o.a[0]), n = normS(o.a[1]); return c===t ? 0 : n.indexOf(t)===0 ? 1 : (' '+n).indexOf(' '+t)!==-1 ? 2 : 3; }
+    hits.sort(function(x, y){ return sc(x) - sc(y) || (y.major-x.major); });
+    hits.slice(0, 6).forEach(function(o){
+      var b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = '<b>'+esc(o.a[0])+'</b><span>'+esc(o.a[1])+'</span>';
+      b.onclick = function(){
+        closeSheets(); select(null); $('#q').value = ''; filter = ''; box.innerHTML = ''; redrawAll();
+        map.setView([o.a[2], o.a[3]], Math.max(map.getZoom(), 11), {animate:false});
+        updateAirports();
+        if(!apLayer.hasLayer(o.m)) apLayer.addLayer(o.m);
+        o.m.openPopup();
+      };
+      box.appendChild(b);
+    });
+  }
+  $('#q').addEventListener('input', function(e){ filter = e.target.value.trim().toLowerCase(); redrawAll(); apSearch(e.target.value); });
   $('#src').addEventListener('change', function(e){
     src = e.target.value;
     planes.forEach(function(p){ if(p.marker) p.marker.remove(); });
