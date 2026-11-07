@@ -1626,10 +1626,15 @@
     sim.cam3.aspect = cL.W/cL.H; sim.cam3.fov = sim.fov; sim.cam3.updateProjectionMatrix();
   }
   // Flyselskapets logo og navn som dekor på skroget og halefinnen
+  var LIVERY = {
+    SAS:{tail:0x0b2a8f, eng:0xc8202f, noStripe:true, body:'Scandinavian Airlines', bodyCol:'#7d8794', bodyLogo:false, tailText:'SAS'},
+    NOZ:{tail:0xa9c8ea, eng:0xe9edf1, noStripe:true, nose:0xd81939, tip:0xd81939, tailLogo:true},
+  };
+  LIVERY.NAX = LIVERY.NSZ = LIVERY.NOZ;
   function simLivery(d, tailCol, group){
     var T = THREE, code = airOf(d), iata = IATA[code], name = (AIRLINES[code] || '').toUpperCase();
     if(!iata && !name) return;
-    var hex = '#' + ('000000' + tailCol.toString(16)).slice(-6), logoImg = null;
+    var LV = LIVERY[code] || {}, hex = '#' + ('000000' + tailCol.toString(16)).slice(-6), logoImg = null;
     function rr(c, x, y, w, h, r){ c.beginPath(); c.moveTo(x+r, y); c.arcTo(x+w, y, x+w, y+h, r); c.arcTo(x+w, y+h, x, y+h, r); c.arcTo(x, y+h, x, y, r); c.arcTo(x, y, x+w, y, r); c.closePath(); }
     function contain(c, im, x, y, w, h){ var k = Math.min(w/im.width, h/im.height); c.drawImage(im, x+(w-im.width*k)/2, y+(h-im.height*k)/2, im.width*k, im.height*k); }
     // Skrog: logo + navn, med mørk kontur så det leses mot hvit lakk
@@ -1637,26 +1642,30 @@
     var tex = new T.CanvasTexture(cv); tex.anisotropy = 8;
     function drawBody(){
       c.clearRect(0, 0, 2048, 480); c.textAlign = 'left'; c.textBaseline = 'middle';
-      var txt = name || iata, fs = 300, x0 = 40, ls = 0;
-      var lw = logoImg ? 400 : 0;
+      var txt = LV.body || name || iata, fs = 300, x0 = 40, ls = 0;
+      var lw = (logoImg && LV.bodyLogo!==false) ? 400 : 0;
       c.font = '800 '+fs+'px Arial,Helvetica,sans-serif';
       var maxW = 2048 - 80 - (lw ? lw + 50 : 0);
       while(c.measureText(txt).width > maxW && fs > 80){ fs -= 10; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif'; }
       var tw = c.measureText(txt).width, total = tw + (lw ? lw + 50 : 0); x0 = (2048 - total)/2;
-      if(logoImg){ c.save(); rr(c, x0, 40, 400, 400, 60); c.clip(); c.fillStyle = '#fff'; c.fillRect(x0, 40, 400, 400); contain(c, logoImg, x0+20, 60, 360, 360); c.restore(); x0 += 450; }
-      c.fillStyle = hex; c.fillText(txt, x0, 250);
+      if(lw){ c.save(); rr(c, x0, 40, 400, 400, 60); c.clip(); c.fillStyle = '#fff'; c.fillRect(x0, 40, 400, 400); contain(c, logoImg, x0+20, 60, 360, 360); c.restore(); x0 += 450; }
+      c.fillStyle = LV.bodyCol || hex; c.fillText(txt, x0, 250);
       tex.needsUpdate = true;
     }
     drawBody();
     var mk = function(t){ return new T.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}); };
     var fmat = mk(tex), fg = new T.PlaneGeometry(13, 13*480/2048);
-    var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
-    var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
+    if(!LV.tailLogo){
+      var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
+      var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
+    }
     // Logo på halefinnen: stort, med riktige proporsjoner
     var lc = document.createElement('canvas'); lc.width = lc.height = 512; var lx = lc.getContext('2d');
     function drawTail(){
       lx.clearRect(0, 0, 512, 512);
-      if(logoImg){
+      if(LV.tailText){
+        lx.fillStyle = '#fff'; lx.font = '900 250px Arial,Helvetica,sans-serif'; lx.textAlign = 'center'; lx.textBaseline = 'middle'; lx.fillText(LV.tailText, 256, 262);
+      } else if(logoImg){
         lx.save(); rr(lx, 16, 16, 480, 480, 90); lx.fillStyle = '#fff'; lx.fill(); lx.clip(); contain(lx, logoImg, 46, 46, 420, 420); lx.restore();
       } else {
         lx.fillStyle = '#ffffff'; lx.beginPath(); lx.arc(256, 256, 240, 0, 7); lx.fill();
@@ -1665,10 +1674,10 @@
       ltex.needsUpdate = true;
     }
     var ltex = new T.CanvasTexture(lc); ltex.anisotropy = 8; drawTail();
-    var lmat = mk(ltex), lg = new T.PlaneGeometry(3.8, 3.8);
-    var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.4, 15.2); lr.rotation.y = Math.PI/2; group.add(lr);
-    var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.4, 15.2); ll.rotation.y = -Math.PI/2; group.add(ll);
-    if(iata){
+    var lsz = LV.tailText ? 5.2 : 3.8, lmat = mk(ltex), lg = new T.PlaneGeometry(lsz, lsz);
+    var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.6, 15.0); lr.rotation.y = Math.PI/2; group.add(lr);
+    var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.6, 15.0); ll.rotation.y = -Math.PI/2; group.add(ll);
+    if(iata && !LV.tailText){
       var urls = ['https://pics.avs.io/al_square/512/512/'+iata+'.png', 'https://pics.avs.io/512/512/'+iata+'.png', 'https://images.kiwi.com/airlines/256x256/'+iata+'.png'], n = 0;
       (function tryNext(){
         if(n >= urls.length) return;
@@ -1680,7 +1689,8 @@
     }
   }
   function simBuildPlane(heli, tailCol, d){
-    var T = THREE, g = new T.Group();
+    var T = THREE, g = new T.Group(), LV = (!heli && d && LIVERY[airOf(d)]) || {};
+    if(LV.tail != null) tailCol = LV.tail;
     var white = new T.MeshStandardMaterial({color:0xf2f5f8, roughness:.45, metalness:.1, side:T.DoubleSide});
     var grey = new T.MeshStandardMaterial({color:0x9aa5b1, roughness:.5, metalness:.3, side:T.DoubleSide});
     var tail = new T.MeshStandardMaterial({color:tailCol, roughness:.5, metalness:.1, side:T.DoubleSide});
@@ -1702,7 +1712,13 @@
     var pr = [[-18.6,0],[-18,.7],[-16.8,1.35],[-14.5,1.85],[-11,2.05],[8,2.05],[12,1.6],[15.5,1.0],[18.2,.45],[18.8,0]];
     var fu = add(new T.LatheGeometry(pr.map(function(q){ return new T.Vector2(q[1], q[0]); }), 28), white); fu.rotation.x = Math.PI/2;
     var ck = add(new T.SphereGeometry(1, 14, 10), dark, 0, .75, -16.4); ck.scale.set(1.25, .55, 1.35);
-    var stripe = add(new T.CylinderGeometry(2.07, 2.07, 1.0, 28, 1, true), tail, 0, 0, -3); stripe.rotation.x = Math.PI/2; stripe.scale.set(1, 1, 1);
+    if(!LV.noStripe){ var stripe = add(new T.CylinderGeometry(2.07, 2.07, 1.0, 28, 1, true), tail, 0, 0, -3); stripe.rotation.x = Math.PI/2; }
+    if(LV.nose != null){
+      var nm = new T.MeshStandardMaterial({color:LV.nose, roughness:.4, metalness:.1, side:T.DoubleSide});
+      var np = pr.filter(function(q){ return q[0] <= -9.5; }).map(function(q){ return new T.Vector2(q[1]*1.012, q[0]); });
+      np.push(new T.Vector2(2.05*1.012, -9.5));
+      var nz = add(new T.LatheGeometry(np, 28), nm); nz.rotation.x = Math.PI/2;
+    }
     var sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(15.8, 8.2); sh.lineTo(15.8, 10.6); sh.lineTo(0, 6.4); sh.lineTo(0, 0);
     var wg = new T.ExtrudeGeometry(sh, {depth:.45, bevelEnabled:false}); wg.rotateX(Math.PI/2); wg.translate(0, .25, -3.2);
     var wr = add(wg, white, 1.6, -.9, 0), wl = add(wg, white, -1.6, -.9, 0); wl.scale.x = -1; wr.rotation.z = wl.rotation.z = 0; wr.rotation.z = .05; wl.rotation.z = -.05;
@@ -1713,8 +1729,10 @@
     var fs = new T.Shape(); fs.moveTo(0, 0); fs.lineTo(6.6, 0); fs.lineTo(5.8, 7.4); fs.lineTo(3.4, 7.4); fs.lineTo(0, 0);
     var fg = new T.ExtrudeGeometry(fs, {depth:.4, bevelEnabled:false}); fg.translate(0, 0, -.2); fg.rotateY(-Math.PI/2);
     add(fg, tail, 0, 1.6, 11.2);
+    if(LV.tip != null){ var tm = new T.MeshStandardMaterial({color:LV.tip, roughness:.4, metalness:.1, side:T.DoubleSide}); var tp = add(new T.BoxGeometry(.5, 1.5, 3.0), tm, 0, 8.3, 15.9); tp.rotation.x = .2; }
+    var engMat = LV.eng != null ? new T.MeshStandardMaterial({color:LV.eng, roughness:.4, metalness:.2, side:T.DoubleSide}) : grey;
     [-1,1].forEach(function(e){
-      var en = add(new T.CylinderGeometry(1.1, 1.0, 4.6, 16), grey, e*5.8, -1.9, -1.4); en.rotation.x = Math.PI/2;
+      var en = add(new T.CylinderGeometry(1.1, 1.0, 4.6, 16), engMat, e*5.8, -1.9, -1.4); en.rotation.x = Math.PI/2;
       var inl = add(new T.CylinderGeometry(.85, .85, .2, 16), dark, e*5.8, -1.9, -3.75); inl.rotation.x = Math.PI/2;
     });
     g.userData.len = 37.6;
