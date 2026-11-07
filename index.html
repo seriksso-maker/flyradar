@@ -1012,6 +1012,14 @@
     if(!p.marker._map) p.marker.addTo(map);
   }
 
+  // Ruteoppslaget (callsign) gir bare én retning. Flyr flyet tydelig mot "avgangsstedet", byttes fra/til.
+  function orientRoute(d){
+    var r = d.call ? cache.route.get(d.call) : null;
+    if(!r || !r.origin || !r.destination || r.origin.latitude==null || r.destination.latitude==null) return;
+    if(d.ground || !(d.gs>150) || d.trk==null) return;
+    var bo = bearing(d.lat, d.lon, r.origin.latitude, r.origin.longitude), bd = bearing(d.lat, d.lon, r.destination.latitude, r.destination.longitude);
+    if(Math.abs(angDiff(d.trk, bo)) < 60 && Math.abs(angDiff(d.trk, bd)) > 120){ var t = r.origin; r.origin = r.destination; r.destination = t; routeDrawn = ''; }
+  }
   var pendFly = null;
   (function(){
     try{
@@ -1038,6 +1046,7 @@
       var last = p.trail[p.trail.length-1];
       if(!last || last[0]!==a.lat || last[1]!==a.lon){ p.trail.push([a.lat,a.lon,a.alt]); if(p.trail.length>80) p.trail.shift(); }
       p.hold = holdCalc(p);
+      orientRoute(a);
       draw(a.hex);
     });
     holdPill(); rscPill();
