@@ -1627,8 +1627,8 @@
   }
   // Flyselskapets logo og navn som dekor på skroget og halefinnen
   var LIVERY = {
-    SAS:{tail:0x0b2a8f, eng:0xc8202f, noStripe:true, body:'Scandinavian Airlines', bodyCol:'#7d8794', bodyLogo:false, tailText:'SAS'},
-    NOZ:{tail:0xa9c8ea, eng:0xe9edf1, noStripe:true, nose:0xd81939, tip:0xd81939, tailLogo:true},
+    SAS:{tail:0x0b2a8f, eng:0xc8202f, noStripe:true, body:'Scandinavian Airlines', bodyCol:'#7d8794', tailText:'SAS'},
+    NOZ:{tail:0xa9c8ea, eng:0xe9edf1, noStripe:true, nose:0xd81939, tip:0xd81939, body:'norwegian', bodyCol:'#d81939', bz:-2.8},
   };
   LIVERY.NAX = LIVERY.NSZ = LIVERY.NOZ;
   function simLivery(d, tailCol, group){
@@ -1643,7 +1643,7 @@
     function drawBody(){
       c.clearRect(0, 0, 2048, 480); c.textAlign = 'left'; c.textBaseline = 'middle';
       var txt = LV.body || name || iata, fs = 300, x0 = 40, ls = 0;
-      var lw = (logoImg && LV.bodyLogo!==false) ? 400 : 0;
+      var lw = logoImg ? 400 : 0;
       c.font = '800 '+fs+'px Arial,Helvetica,sans-serif';
       var maxW = 2048 - 80 - (lw ? lw + 50 : 0);
       while(c.measureText(txt).width > maxW && fs > 80){ fs -= 10; c.font = '800 '+fs+'px Arial,Helvetica,sans-serif'; }
@@ -1655,9 +1655,9 @@
     drawBody();
     var mk = function(t){ return new T.MeshBasicMaterial({map:t, transparent:true, depthWrite:false, polygonOffset:true, polygonOffsetFactor:-2, polygonOffsetUnits:-2}); };
     var fmat = mk(tex), fg = new T.PlaneGeometry(13, 13*480/2048);
-    if(!LV.tailLogo){
-      var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
-      var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
+    {
+      var fr = new T.Mesh(fg, fmat); fr.position.set(2.09, 0.35, LV.bz != null ? LV.bz : -8.2); fr.rotation.y = Math.PI/2; group.add(fr);
+      var fl = new T.Mesh(fg, fmat); fl.position.set(-2.09, 0.35, LV.bz != null ? LV.bz : -8.2); fl.rotation.y = -Math.PI/2; group.add(fl);
     }
     // Logo på halefinnen: stort, med riktige proporsjoner
     var lc = document.createElement('canvas'); lc.width = lc.height = 512; var lx = lc.getContext('2d');
@@ -1677,12 +1677,12 @@
     var lsz = LV.tailText ? 5.2 : 3.8, lmat = mk(ltex), lg = new T.PlaneGeometry(lsz, lsz);
     var lr = new T.Mesh(lg, lmat); lr.position.set(0.23, 4.6, 15.0); lr.rotation.y = Math.PI/2; group.add(lr);
     var ll = new T.Mesh(lg, lmat); ll.position.set(-0.23, 4.6, 15.0); ll.rotation.y = -Math.PI/2; group.add(ll);
-    if(iata && !LV.tailText){
+    if(iata){
       var urls = ['https://pics.avs.io/al_square/512/512/'+iata+'.png', 'https://pics.avs.io/512/512/'+iata+'.png', 'https://images.kiwi.com/airlines/256x256/'+iata+'.png'], n = 0;
       (function tryNext(){
         if(n >= urls.length) return;
         var im = new Image(); im.crossOrigin = 'anonymous';
-        im.onload = function(){ try{ logoImg = im; drawTail(); drawBody(); }catch(e){ logoImg = null; } };
+        im.onload = function(){ try{ logoImg = im; if(!LV.tailText) drawTail(); drawBody(); }catch(e){ logoImg = null; } };
         im.onerror = function(){ n++; tryNext(); };
         im.src = urls[n];
       })();
