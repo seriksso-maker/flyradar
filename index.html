@@ -353,6 +353,7 @@
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
   <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button><button type="button" id="bRad" style="grid-column:1/3">🎧 Radiosamband (simulert lyd)</button></div>
+  <div style="margin-top:8px;font-size:12px;color:var(--mute)">Ekte flyradio: lim inn lydstrøm-adresse (.mp3 / stream-lenke)</div><div style="display:flex;gap:6px;margin-top:4px"><input id="liveUrl" type="url" inputmode="url" placeholder="https://…" style="flex:1;min-width:0;padding:9px;border-radius:9px;border:1px solid #3a4756;background:#0f1722;color:#fff"><button type="button" id="liveBtn" style="padding:9px 12px">▶ Spill</button></div><a href="https://www.liveatc.net/search/" target="_blank" rel="noopener" style="display:block;margin-top:4px;font-size:12px;color:var(--amber)">Finn strøm på LiveATC →</a><audio id="liveAud" preload="none"></audio>
   <div id="radNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Simulert flygeleder-radio laget fra live flydata rundt nærmeste flyplass. Ikke ekte tårnlyd. Krever lyd på enheten.</div>
   <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
@@ -3239,6 +3240,20 @@
     $('#radNote').textContent = '🎧 Lytter … (simulert, ikke ekte tårnlyd)';
     radSquelch(); radTick(); radTimer = setInterval(radTick, 9000);
   }
+
+  (function(){
+    var inp = $('#liveUrl'), btn = $('#liveBtn'), au = $('#liveAud'), on = false;
+    try{ inp.value = localStorage.getItem('fb_live') || ''; }catch(e){}
+    function st(t){ btn.textContent = t; }
+    btn.onclick = function(){
+      if(on){ au.pause(); au.removeAttribute('src'); au.load(); on = false; st('▶ Spill'); return; }
+      var u = inp.value.trim(); if(!/^https?:\/\//i.test(u)){ inp.focus(); return; }
+      try{ localStorage.setItem('fb_live', u); }catch(e){}
+      au.src = u; st('Kobler til …');
+      au.play().then(function(){ on = true; st('■ Stopp'); }, function(){ on = false; st('Feilet – prøv annen lenke'); setTimeout(function(){ st('▶ Spill'); }, 3000); });
+    };
+    au.onerror = function(){ if(on || au.src){ on = false; st('Feilet – prøv annen lenke'); setTimeout(function(){ st('▶ Spill'); }, 3000); } };
+  })();
   $('#bRad').onclick = function(){ radOn = !radOn; radApply(); };
   $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
   map.on('move zoom resize', function(){ if(atcOn){ cancelAnimationFrame(atcRaf); atcRaf = requestAnimationFrame(atcDraw); } });
