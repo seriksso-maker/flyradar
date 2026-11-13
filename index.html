@@ -3243,7 +3243,7 @@
 
   (function(){
     var inp = $('#liveUrl'), btn = $('#liveBtn'), au = $('#liveAud'), on = false;
-    try{ inp.value = localStorage.getItem('fb_live') || ''; }catch(e){}
+    try{ inp.value = localStorage.getItem('fb_live') || 'https://d.liveatc.net/eneg2'; }catch(e){}
     function st(t){ btn.textContent = t; }
     btn.onclick = function(){
       if(on){ au.pause(); au.removeAttribute('src'); au.load(); on = false; st('▶ Spill'); return; }
