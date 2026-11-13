@@ -352,7 +352,8 @@
   <div class="chips2" id="mapChips"></div>
   <select id="mapType" aria-label="Karttype" hidden></select>
   <h3 style="margin-top:14px">Flygeleder</h3>
-  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button></div>
+  <div class="chips2"><button type="button" id="bAtc" style="grid-column:1/3">Flygeledermodus (radarskjerm)</button><button type="button" id="bLr" style="grid-column:1/3">Landingsradar (innflyging og landing)</button><button type="button" id="bRsc" style="grid-column:1/3">Redningsradar (helikopter og ambulansefly)</button><button type="button" id="bRad" style="grid-column:1/3">🎧 Radiosamband (simulert lyd)</button></div>
+  <div id="radNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Simulert flygeleder-radio laget fra live flydata rundt nærmeste flyplass. Ikke ekte tårnlyd. Krever lyd på enheten.</div>
   <div id="rscNote" style="margin-top:6px;font-size:12px;color:var(--mute)"></div>
   <div id="atcNote" style="margin-top:6px;font-size:12px;color:var(--mute)" hidden>Radarskjerm med datablokker, fartsvektor, historikk, avstandsringer og konfliktvarsel. Trykk på et fly for detaljer.</div>
   <h3 style="margin-top:14px">Vær</h3>
@@ -681,7 +682,6 @@
       + sec('Ankommende', arr, 6) + sec('Avgående', dep, 6)
       + '<div style="margin-top:6px;font-size:12px;color:#9fb0c0">På bakken: '+gnd.length+(gnd.length ? ' · '+gnd.slice(0,4).map(function(r){ return esc(r[0].call||r[0].hex); }).join(', ')+(gnd.length>4?' …':'') : '')+'</div>'
       + '<button type="button" class="aplr" style="width:100%;margin-top:8px">Åpne landingsradar for '+esc(a[0])+'</button>'
-      + (ICAO_ATC[a[0]] ? '<a class="apatc" href="https://www.liveatc.net/search/?icao='+ICAO_ATC[a[0]]+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:6px;padding:9px;border-radius:9px;background:#2b3a4a;color:#fff;text-decoration:none;font-weight:600">🎧 Lytt til flytårn (LiveATC)</a>' : '')
       + '<div style="margin-top:4px;font-size:11px;color:#5f7284">Beregnet fra flyene som vises på kartet (innen 45 km, under 9 000 ft).</div>';
   }
   function aptLive(a, marker, on){
@@ -3177,6 +3177,69 @@
   }
   $('#bRsc').onclick = function(){ rscOn = !rscOn; rscApply(); };
   rscApply();
+
+  // ---- Simulert radiosamband (talesyntese fra live flydata) ----
+  var radOn = false, radTimer = 0, radAc = null, radLast = {};
+  function radSquelch(){
+    try{
+      radAc = radAc || new (window.AudioContext || window.webkitAudioContext)();
+      var n = Math.floor(radAc.sampleRate*0.12), buf = radAc.createBuffer(1, n, radAc.sampleRate), ch = buf.getChannelData(0);
+      for(var i=0;i<n;i++) ch[i] = (Math.random()*2-1) * 0.08 * (1 - i/n);
+      var src = radAc.createBufferSource(); src.buffer = buf;
+      var bp = radAc.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = .7;
+      src.connect(bp); bp.connect(radAc.destination); src.start();
+    }catch(e){}
+  }
+  function radSay(txt, atc, cb){
+    if(!window.speechSynthesis){ if(cb) cb(); return; }
+    var u = new SpeechSynthesisUtterance(txt);
+    u.lang = 'en-GB'; u.rate = atc ? 1.12 : 1.02; u.pitch = atc ? .85 : 1.1; u.volume = 1;
+    var vs = speechSynthesis.getVoices().filter(function(v){ return /^en/i.test(v.lang); });
+    if(vs.length) u.voice = vs[atc ? 0 : Math.min(1, vs.length-1)];
+    u.onend = function(){ radSquelch(); if(cb) cb(); };
+    u.onerror = function(){ if(cb) cb(); };
+    radSquelch(); speechSynthesis.speak(u);
+  }
+  function radCall(d){
+    var m = /^([A-Z]{3})(\d{1,4})([A-Z]{0,2})$/.exec(d.call || ''), air = m && AIRLINES[m[1]];
+    var dig = function(t){ return String(t).split('').join(' ').replace(/0/g,'zero').replace(/9/g,'niner'); };
+    if(!m) return d.call ? d.call.split('').join(' ') : null;
+    return (air || m[1].split('').join(' ')) + ' ' + dig(m[2]) + (m[3] ? ' ' + m[3].split('').join(' ') : '');
+  }
+  function radTick(){
+    if(!radOn || speechSynthesis.speaking) return;
+    var cand = [], bnd = map.getBounds();
+    planes.forEach(function(p){
+      var d = p.d; if(!d.call || d.alt==null || !bnd.contains([d.lat, d.lon]) || (Date.now() - (radLast[d.hex]||0)) < 90000) return;
+      var ap = null, dist = 1e9;
+      AIRPORTS.forEach(function(a){ var k = km(d.lat, d.lon, a[2], a[3]); if(k < dist){ dist = k; ap = a; } });
+      if(!ap || dist > 60) return;
+      if(d.ground) cand.push({d:d, k:'gnd', ap:ap});
+      else if(d.alt < 2800 && dist < 14 && (d.vr||0) < -200) cand.push({d:d, k:'land', ap:ap});
+      else if(d.alt < 9000 && (d.vr||0) < -300) cand.push({d:d, k:'app', ap:ap});
+      else if(d.alt < 9000 && (d.vr||0) > 500) cand.push({d:d, k:'dep', ap:ap});
+    });
+    if(!cand.length) return;
+    var c = cand[Math.floor(Math.random()*cand.length)], d = c.d, nm = c.ap[1].split(',')[0].replace(/ lufthavn/i, ''), cs = radCall(d), qnh = 1000 + Math.floor(Math.random()*30);
+    var fl = Math.max(60, Math.round(Math.min(d.alt + 4000, 36000)/1000)*10), pl = '';
+    var t1, t2;
+    var wd = String(Math.floor(Math.random()*36)*10).padStart(3,'0'), ws = 5 + Math.floor(Math.random()*15);
+    if(c.k==='land'){ t1 = cs + ', ' + nm + ' Tower, wind ' + wd + ' degrees ' + ws + ' knots, cleared to land.'; t2 = 'Cleared to land, ' + cs + '.'; }
+    else if(c.k==='app'){ t1 = cs + ', ' + nm + ' Approach, descend altitude ' + Math.max(2000, Math.round(d.alt/1000)*1000 - 2000) + ' feet, QNH ' + qnh + '.'; t2 = 'Descend altitude ' + Math.max(2000, Math.round(d.alt/1000)*1000 - 2000) + ' feet, QNH ' + qnh + ', ' + cs + '.'; }
+    else if(c.k==='dep'){ t1 = cs + ', ' + nm + ' Departure, radar contact, climb flight level ' + fl + '.'; t2 = 'Climb flight level ' + fl + ', ' + cs + '.'; }
+    else { t1 = cs + ', ' + nm + ' Ground, taxi to holding point, report ready.'; t2 = 'Taxi to holding point, will report ready, ' + cs + '.'; }
+    radLast[d.hex] = Date.now();
+    $('#radNote').textContent = '🎧 ' + t1;
+    radSay(t1, true, function(){ setTimeout(function(){ if(radOn) radSay(t2, false); }, 500); });
+  }
+  function radApply(){
+    $('#bRad').classList.toggle('on', radOn); $('#radNote').hidden = false;
+    clearInterval(radTimer); if(!radOn){ try{ speechSynthesis.cancel(); }catch(e){} $('#radNote').textContent = 'Simulert flygeleder-radio laget fra live flydata rundt nærmeste flyplass. Ikke ekte tårnlyd. Krever lyd på enheten.'; return; }
+    if(!window.speechSynthesis){ $('#radNote').textContent = 'Nettleseren støtter ikke talesyntese.'; radOn = false; $('#bRad').classList.remove('on'); return; }
+    $('#radNote').textContent = '🎧 Lytter … (simulert, ikke ekte tårnlyd)';
+    radSquelch(); radTick(); radTimer = setInterval(radTick, 9000);
+  }
+  $('#bRad').onclick = function(){ radOn = !radOn; radApply(); };
   $('#bAtc').onclick = function(){ atcOn = !atcOn; atcApply(); if(atcOn) closeSheets(); };
   map.on('move zoom resize', function(){ if(atcOn){ cancelAnimationFrame(atcRaf); atcRaf = requestAnimationFrame(atcDraw); } });
   map.on('click', function(e){
