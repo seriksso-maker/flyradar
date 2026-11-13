@@ -531,6 +531,7 @@
 
   /* ---------- Flyplasser (Norge og Sverige) ---------- */
   // [IATA, navn, bredde, lengde, stor flyplass (1)]
+  var ICAO_ATC = {OSL:'ENGM',BGO:'ENBR',SVG:'ENZV',TRD:'ENVA',TOS:'ENTC',BOO:'ENBO',KRS:'ENCN',AES:'ENAL',HAU:'ENHD',TRF:'ENTO',CPH:'EKCH',ARN:'ESSA',GOT:'ESGG',HEL:'EFHK',LHR:'EGLL',AMS:'EHAM',FRA:'EDDF',CDG:'LFPG'};
   var AIRPORTS = [
     // Norge
     ['OSL','Oslo lufthavn, Gardermoen',60.194,11.100,1],['BGO','Bergen lufthavn, Flesland',60.293,5.218,1],
@@ -680,6 +681,7 @@
       + sec('Ankommende', arr, 6) + sec('Avgående', dep, 6)
       + '<div style="margin-top:6px;font-size:12px;color:#9fb0c0">På bakken: '+gnd.length+(gnd.length ? ' · '+gnd.slice(0,4).map(function(r){ return esc(r[0].call||r[0].hex); }).join(', ')+(gnd.length>4?' …':'') : '')+'</div>'
       + '<button type="button" class="aplr" style="width:100%;margin-top:8px">Åpne landingsradar for '+esc(a[0])+'</button>'
+      + (ICAO_ATC[a[0]] ? '<a class="apatc" href="https://www.liveatc.net/search/?icao='+ICAO_ATC[a[0]]+'" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:6px;padding:9px;border-radius:9px;background:#2b3a4a;color:#fff;text-decoration:none;font-weight:600">🎧 Lytt til flytårn (LiveATC)</a>' : '')
       + '<div style="margin-top:4px;font-size:11px;color:#5f7284">Beregnet fra flyene som vises på kartet (innen 45 km, under 9 000 ft).</div>';
   }
   function aptLive(a, marker, on){
