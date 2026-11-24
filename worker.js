@@ -30,6 +30,15 @@ export default {
       return new Response(null, { headers: { ...CORS, 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': '*' } });
     }
     const url = new URL(request.url);
+    if (url.pathname === '/avinor') {
+      const ap = (url.searchParams.get('airport') || '').toUpperCase();
+      const dir = url.searchParams.get('dir') === 'D' ? 'D' : 'A';
+      if (!/^[A-Z]{3}$/.test(ap)) return new Response('feil', { status: 400, headers: CORS });
+      try {
+        const r = await fetch(`https://asrv.avinor.no/XmlFeed/v1.0?airport=${ap}&TimeFrom=2&TimeTo=10&direction=${dir}`, { cf: { cacheTtl: 30, cacheEverything: true } });
+        return new Response(await r.text(), { status: r.status, headers: { ...CORS, 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=30' } });
+      } catch (e) { return new Response('feil', { status: 502, headers: CORS }); }
+    }
     if (url.pathname !== '/multi') {
       return new Response('Flyradar-proxy er i gang. Bruk /multi?p=lat,lon,nm', { headers: CORS });
     }

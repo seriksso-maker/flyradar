@@ -1205,6 +1205,30 @@
     map.setView([a[2], a[3]], Math.max(map.getZoom(), 8), {animate:false});
     clearInterval(adTimer); adUpd(); adTimer = setInterval(adUpd, 5000);
   }
+  function adCityByIata(i){ for(var k=0;k<AIRPORTS.length;k++) if(AIRPORTS[k][0]===i) return AIRPORTS[k][1].split(',')[0].replace(/ lufthavn/i,''); return i; }
+  function adAirName(i){ for(var k in IATA) if(IATA[k]===i && AIRLINES[k]) return AIRLINES[k]; return i; }
+  var adSched = {};  // 'OSL|A' -> {t, list}
+  var AV_STATUS = {A:'Landet', D:'Avgått', E:'Ny tid', C:'Kansellert', N:'Ny info'};
+  function adLoadSched(a, dir){
+    var key = a[0]+'|'+dir, c = adSched[key];
+    if(c && (Date.now() - c.t < 60000 || c.busy)) return;
+    c = adSched[key] = c || {list:null, t:0, err:false}; c.busy = true;
+    function parse(txt){
+      var x = new DOMParser().parseFromString(txt, 'text/xml'), out = [];
+      Array.prototype.forEach.call(x.getElementsByTagName('flight'), function(f){
+        function g(n){ var e = f.getElementsByTagName(n)[0]; return e ? e.textContent : ''; }
+        var st = f.getElementsByTagName('status')[0];
+        out.push({id:g('flight_id'), air:g('airline'), t:Date.parse(g('schedule_time')), other:g('airport'), gate:g('gate'), belt:g('belt'), code: st ? st.getAttribute('code') : '', stime: st ? Date.parse(st.getAttribute('time')) : NaN, via:g('via_airport')});
+      });
+      if(!out.length && !/<airport/i.test(txt)) throw new Error('tomt');
+      return out;
+    }
+    var q = 'airport='+a[0]+'&TimeFrom=2&TimeTo=10&direction='+dir, urls = ['https://asrv.avinor.no/XmlFeed/v1.0?'+q, MY_PROXY+'/avinor?airport='+a[0]+'&dir='+dir];
+    (function next(i){
+      if(i >= urls.length){ c.err = true; c.busy = false; c.t = Date.now(); adUpd(); return; }
+      fetch(urls[i]).then(function(r){ if(!r.ok) throw new Error('HTTP'+r.status); return r.text(); }).then(function(t){ c.list = parse(t); c.err = false; c.busy = false; c.t = Date.now(); adUpd(); }).catch(function(){ next(i+1); });
+    })(0);
+  }
   function adClose(){ clearInterval(adTimer); adApt = null; if(adBox) adBox.style.display = 'none'; }
   function adUpd(){
     if(!adApt || !adBox) return;
@@ -1236,9 +1260,26 @@
       }
     });
     arr.sort(function(x, y){ return x.k - y.k; }); dep.sort(function(x, y){ return x.k - y.k; });
+    var dirK = adTab === 'arr' ? 'A' : 'D'; adLoadSched(a, 'A'); adLoadSched(a, 'D');
+    var sc = adSched[a[0]+'|'+dirK], useSched = !!(sc && sc.list && sc.list.length);
     var list = adTab === 'arr' ? arr : dep;
     var h = '<div class="lrh"><b>'+esc(a[0])+'</b><span>'+esc(a[1])+'</span><button type="button" data-x>×</button></div>'
       + '<div class="tabs"><button type="button" data-tab="arr" class="'+(adTab==='arr'?'on':'')+'">Ankomster ('+arr.length+')</button><button type="button" data-tab="dep" class="'+(adTab==='dep'?'on':'')+'">Avganger ('+dep.length+')</button></div>';
+    if(useSched){
+      var nowMs = Date.now(), rows = sc.list.filter(function(f){ return (isFinite(f.stime) ? f.stime : f.t) > nowMs - 20*60000 || f.code==='A'&&f.t > nowMs - 60*60000; }).sort(function(x, y){ return x.t - y.t; });
+      var byCs = {}; planes.forEach(function(p){ var rt = p.d.call && cache.route.get(p.d.call); if(rt && rt.callsign_iata) byCs[rt.callsign_iata] = p.d.hex; });
+      h = h.replace(/<div class="tabs">.*?<\/div>/, '<div class="tabs"><button type="button" data-tab="arr" class="'+(adTab==='arr'?'on':'')+'">Ankomster</button><button type="button" data-tab="dep" class="'+(adTab==='dep'?'on':'')+'">Avganger</button></div>');
+      rows.slice(0, 40).forEach(function(f){
+        var late = isFinite(f.stime) && f.code==='E' && Math.abs(f.stime - f.t) > 4*60000, show = late ? f.stime : f.t;
+        var st = AV_STATUS[f.code] || 'I rute', cls = f.code==='C' ? 'wn' : (f.code==='A'||f.code==='D') ? 'ok' : late ? 'wn' : 'gr';
+        if(late) st = 'Ny tid ' + adHM(f.stime);
+        var other = adCityByIata(f.other), live = byCs[f.id];
+        h += '<div class="adr"'+(live ? ' data-hex="'+esc(live)+'"' : ' style="cursor:default"')+'><span class="t">'+adHM(f.t)+'</span><b>'+esc(f.id)+' · '+esc(other)+'</b><em class="'+cls+'">'+esc(st)+'</em><small>'+esc(adAirName(f.air))+(f.gate ? ' · Gate '+esc(f.gate) : '')+(f.belt ? ' · Bånd '+esc(f.belt) : '')+(live ? ' · 🛰 live på kartet' : '')+'</small></div>';
+      });
+      if(!rows.length) h += '<div style="padding:14px 12px;color:var(--mute)">Ingen flyginger i rutetabellen nå.</div>';
+      h += '<div style="padding:8px 12px;font-size:11px;color:#5f7284">Rutetabell og status: Avinor (åpne data). Rader med 🛰 kan trykkes for å se flyet på kartet.</div>';
+      var sc0 = adBox.scrollTop; adBox.innerHTML = h; adBox.scrollTop = sc0; return;
+    }
     if(!list.length) h += '<div style="padding:14px 12px;color:var(--mute)">'+(pend ? 'Henter rutedata … ' : '')+'Ingen fly med kjent rute akkurat nå.</div>';
     list.slice(0, 25).forEach(function(r){
       var d = r.d;
