@@ -194,6 +194,16 @@
   body.atc #rscBox{top:148px}
   .pl.rsc svg{filter:drop-shadow(0 0 6px #ff3b30) drop-shadow(0 0 2px #fff) !important}
   .pl .rcx{position:absolute;left:-9px;top:-9px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:50%;background:#e5322a;color:#fff;font:700 10px var(--ui);font-style:normal;border:1px solid #fff;z-index:2}
+  #adBox{position:fixed;left:10px;bottom:84px;z-index:7500;width:min(94vw,400px);max-height:56vh;overflow:auto;display:none;background:rgba(10,16,23,.96);border:1px solid #ffb454;border-radius:14px;color:var(--fg);font:13px var(--ui);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #adBox .lrh{display:flex;align-items:baseline;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(10,16,23,.98)}
+  #adBox .lrh b{color:#ffb454;font-size:14px} #adBox .lrh span{flex:1}
+  #adBox .lrh button{border:0;background:transparent;color:var(--mute);font-size:20px;line-height:1;padding:0 4px}
+  #adBox .tabs{display:flex;gap:6px;padding:8px 12px}
+  #adBox .tabs button{flex:1;padding:8px;border-radius:9px;border:1px solid #3a4756;background:#0f1722;color:var(--fg)}
+  #adBox .tabs button.on{background:#ffb454;color:#111;border-color:#ffb454;font-weight:700}
+  #adBox .adr{display:grid;grid-template-columns:52px 1fr auto;gap:2px 8px;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;align-items:baseline}
+  #adBox .adr .t{font:700 14px var(--mono);color:#ffb454} #adBox .adr b{color:#e6eef5} #adBox .adr small{color:var(--mute);grid-column:2/4} #adBox .adr em{font-style:normal;font:600 12px var(--mono);text-align:right}
+  #adBox .ok{color:#6fe39a} #adBox .wn{color:#59d0ff} #adBox .gr{color:#9fb0c0}
   #lrBox{position:fixed;left:10px;bottom:84px;z-index:7500;width:min(94vw,370px);max-height:46vh;overflow:auto;display:none;background:rgba(10,16,23,.96);border:1px solid #59d0ff;border-radius:14px;color:var(--fg);font:13px var(--ui);box-shadow:0 8px 30px rgba(0,0,0,.55)}
   #lrBox .lrh{display:flex;align-items:baseline;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(10,16,23,.98)}
   #lrBox .lrh b{color:#59d0ff;font-size:14px} #lrBox .lrh span{color:var(--mute);font-size:12px;flex:1}
@@ -682,7 +692,8 @@
     return '<div style="font-weight:600">Live trafikk <span style="font-weight:400;color:#7b8fa3;font-size:12px">· oppdateres hvert 2. sekund</span></div>'
       + sec('Ankommende', arr, 6) + sec('Avgående', dep, 6)
       + '<div style="margin-top:6px;font-size:12px;color:#9fb0c0">På bakken: '+gnd.length+(gnd.length ? ' · '+gnd.slice(0,4).map(function(r){ return esc(r[0].call||r[0].hex); }).join(', ')+(gnd.length>4?' …':'') : '')+'</div>'
-      + '<button type="button" class="aplr" style="width:100%;margin-top:8px">Åpne landingsradar for '+esc(a[0])+'</button>'
+      + '<button type="button" class="apad" style="width:100%;margin-top:8px">🛫 Avganger og ankomster</button>'
+      + '<button type="button" class="aplr" style="width:100%;margin-top:6px">Åpne landingsradar for '+esc(a[0])+'</button>'
       + '<div style="margin-top:4px;font-size:11px;color:#5f7284">Beregnet fra flyene som vises på kartet (innen 45 km, under 9 000 ft).</div>';
   }
   function aptLive(a, marker, on){
@@ -698,6 +709,7 @@
       el._aptBound = true;
       el.addEventListener('click', function(e){
         if(e.target.closest && e.target.closest('.aplr')){ marker.closePopup(); lrOpen(a); return; }
+        if(e.target.closest && e.target.closest('.apad')){ marker.closePopup(); adOpen(a); return; }
         var r = e.target.closest && e.target.closest('.aprow'); if(!r) return;
         var hex = r.dataset.hex; marker.closePopup(); select(hex);
       });
@@ -1172,6 +1184,69 @@
     lrBox.style.display = 'block'; closeSheets();
     map.setView([a[2], a[3]], Math.max(map.getZoom(), 9), {animate:false});
     clearInterval(lrTimer); lrUpd(); lrTimer = setInterval(lrUpd, 2000);
+  }
+
+  // ---- Avganger og ankomster (fra live flydata + rutedata) ----
+  var adApt = null, adTab = 'arr', adBox = null, adTimer = 0;
+  function adHM(ms){ var t = new Date(ms); return String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0'); }
+  function adCity(x){ return x ? (x.municipality || x.name || x.iata_code || '') : ''; }
+  function adOpen(a){
+    adApt = a;
+    if(!adBox){
+      adBox = document.createElement('div'); adBox.id = 'adBox';
+      adBox.addEventListener('click', function(e){
+        if(e.target.closest('[data-x]')){ adClose(); return; }
+        var t = e.target.closest('[data-tab]'); if(t){ adTab = t.dataset.tab; adUpd(); return; }
+        var r = e.target.closest('[data-hex]'); if(r){ var hex = r.dataset.hex, p = planes.get(hex); follow = true; select(hex); if(p && p.marker){ progPan = true; map.setView(p.marker.getLatLng(), Math.max(map.getZoom(), 9), {animate:false}); progPan = false; } }
+      });
+      document.body.appendChild(adBox);
+    }
+    adBox.style.display = 'block'; closeSheets();
+    map.setView([a[2], a[3]], Math.max(map.getZoom(), 8), {animate:false});
+    clearInterval(adTimer); adUpd(); adTimer = setInterval(adUpd, 5000);
+  }
+  function adClose(){ clearInterval(adTimer); adApt = null; if(adBox) adBox.style.display = 'none'; }
+  function adUpd(){
+    if(!adApt || !adBox) return;
+    var a = adApt, now = Date.now(), arr = [], dep = [], pend = 0, tot = 0;
+    planes.forEach(function(p){
+      var d = p.d; if(!d.call) return;
+      var dist = km(d.lat, d.lon, a[2], a[3]); if(dist > 300) return;
+      var r = cache.route.get(d.call);
+      if(r === undefined){ if(pend < 12){ pend++; lookup(d); } return; }
+      if(!r) return;
+      tot++;
+      var o = r.origin || {}, t = r.destination || {};
+      var isArr = t.iata_code === a[0], isDep = o.iata_code === a[0];
+      if(!isArr && !isDep) return;
+      var air = AIRLINES[airOf(d)] || '';
+      if(isArr){
+        var etaMin = d.ground ? null : (d.gs > 60 ? dist / (d.gs*1.852) * 60 : null);
+        var st, cls = 'wn';
+        if(d.ground){ st = dist < 6 ? 'Landet' : 'På bakken'; cls = 'ok'; }
+        else if(dist < 30 && d.alt != null && d.alt < 5000) { st = 'På innflyging'; cls = 'ok'; }
+        else st = 'Underveis';
+        arr.push({d:d, dist:dist, t:etaMin!=null ? now + etaMin*60000 : null, st:st, cls:cls, who:adCity(o), air:air, k: d.ground ? -1 : (etaMin==null ? 9999 : etaMin)});
+      } else if(isDep){
+        var gone = dist, st2, cls2 = 'wn';
+        if(d.ground){ st2 = dist < 6 ? 'På bakken' : 'Taxi'; cls2 = 'gr'; }
+        else if(dist < 25 && d.alt != null && d.alt < 4000){ st2 = 'Nettopp avgått'; cls2 = 'ok'; }
+        else st2 = 'Avgått';
+        dep.push({d:d, dist:dist, t:null, st:st2, cls:cls2, who:adCity(t), air:air, k: d.ground ? -1 : dist});
+      }
+    });
+    arr.sort(function(x, y){ return x.k - y.k; }); dep.sort(function(x, y){ return x.k - y.k; });
+    var list = adTab === 'arr' ? arr : dep;
+    var h = '<div class="lrh"><b>'+esc(a[0])+'</b><span>'+esc(a[1])+'</span><button type="button" data-x>×</button></div>'
+      + '<div class="tabs"><button type="button" data-tab="arr" class="'+(adTab==='arr'?'on':'')+'">Ankomster ('+arr.length+')</button><button type="button" data-tab="dep" class="'+(adTab==='dep'?'on':'')+'">Avganger ('+dep.length+')</button></div>';
+    if(!list.length) h += '<div style="padding:14px 12px;color:var(--mute)">'+(pend ? 'Henter rutedata … ' : '')+'Ingen fly med kjent rute akkurat nå.</div>';
+    list.slice(0, 25).forEach(function(r){
+      var d = r.d;
+      h += '<div class="adr" data-hex="'+esc(d.hex)+'"><span class="t">'+(r.t ? adHM(r.t) : '––:––')+'</span><b>'+esc(d.call)+' · '+esc(r.who || '?')+'</b><em class="'+r.cls+'">'+esc(r.st)+'</em>'
+        + '<small>'+esc(r.air)+(d.type ? (r.air ? ' · ' : '')+esc(d.type) : '')+' · '+Math.round(r.dist)+' km unna'+(d.alt!=null && !d.ground ? ' · '+nb(Math.round(d.alt/100)*100)+' ft' : '')+'</small></div>';
+    });
+    h += '<div style="padding:8px 12px;font-size:11px;color:#5f7284">Bygget fra fly som vises live innen 300 km og rutedata fra adsbdb.com. Tidene er estimert fra avstand og fart, ikke offisiell rutetabell. Fly uten kjent rute eller utenfor dekning vises ikke.</div>';
+    var sc = adBox.scrollTop; adBox.innerHTML = h; adBox.scrollTop = sc;
   }
   function lrClose(){ clearInterval(lrTimer); lrApt = null; if(lrBox) lrBox.style.display = 'none'; }
   function lrPick(hex){
