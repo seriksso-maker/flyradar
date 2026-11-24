@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Trysil">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Trysil Strøm og Vær</title>
+<style>
+  :root { --bg:#0b0f14; --card:#121922; --line:rgba(255,255,255,.08); --text:#e8edf2; --muted:#8b97a6; --dim:#5b6878;
+    --accent:#f5b942; --good:#4ade80; --mid:#facc15; --bad:#f87171; --cold:#60a5fa; --rain:#38bdf8; }
+  * { box-sizing:border-box; margin:0; padding:0; min-width:0; -webkit-tap-highlight-color:transparent; }
+  html,body { background:var(--bg); color:var(--text); font:16px/1.45 system-ui,-apple-system,"Roboto",Arial,sans-serif; }
+  body { padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 84px); overflow-x:clip; }
+  header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:14px; }
+  .ttl { font-size:28px; font-weight:700; line-height:1.1; } .ttl span { color:var(--accent); }
+  .date { font-size:14px; color:var(--muted); text-transform:capitalize; }
+  .clock { font-size:34px; font-weight:300; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px; margin-bottom:12px; }
+  .label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .row { display:flex; align-items:center; gap:14px; }
+  .now svg { width:86px; height:86px; flex:none; }
+  .temp { font-size:64px; font-weight:300; line-height:1; letter-spacing:-.03em; }
+  .temp.cold { color:var(--cold); }
+  .feels { color:var(--muted); font-size:14px; margin-top:4px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 10px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .v { font-size:20px; font-weight:600; margin-top:2px; white-space:nowrap; }
+  .v small { font-size:12px; color:var(--muted); font-weight:400; margin-left:3px; }
+  .scroll { overflow-x:auto; margin:10px -16px 0; padding:0 16px; scrollbar-width:none; }
+  .scroll::-webkit-scrollbar { display:none; }
+  .fig { position:relative; }
+  .fig canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .days .d { display:grid; grid-template-columns:52px 40px 1fr auto; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line); }
+  .days .d:first-child { border-top:0; }
+  .days .n { color:var(--muted); text-transform:capitalize; }
+  .days svg { width:36px; height:36px; }
+  .rng { height:6px; border-radius:3px; background:rgba(255,255,255,.06); position:relative; }
+  .rng i { position:absolute; top:0; bottom:0; border-radius:3px; background:linear-gradient(90deg,#60a5fa,#fbbf24); }
+  .mm { white-space:nowrap; font-size:15px; } .mm b { font-weight:600; } .mm span { color:var(--muted); }
+  .pr { color:var(--rain); font-size:12px; }
+  .big { font-size:64px; font-weight:700; line-height:1; display:flex; align-items:baseline; gap:8px; margin-top:6px; }
+  .big small { font-size:15px; color:var(--muted); font-weight:400; }
+  .badge { font-size:13px; font-weight:600; padding:4px 10px; border-radius:99px; margin-left:auto; }
+  .tip { line-height:1.7; font-size:15px; } .tip b { color:var(--good); }
+  .strip { display:flex; gap:4px; align-items:flex-end; height:80px; margin-top:12px; }
+  .strip div { flex:1; border-radius:4px 4px 0 0; position:relative; }
+  .strip span { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--dim); }
+  .hint { font-size:12px; color:var(--dim); margin-top:8px; }
+  nav { position:fixed; left:0; right:0; bottom:0; display:flex; background:rgba(11,15,20,.94); backdrop-filter:blur(12px);
+    border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); z-index:10; }
+  nav a { flex:1; text-align:center; padding:12px 0 10px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:600; }
+  nav a svg { display:block; margin:0 auto 3px; width:24px; height:24px; }
+  nav a.on { color:var(--accent); }
+  section.view { display:none; } section.view.on { display:block; }
+  .err { color:var(--dim); padding:8px 0; }
+  .foot { font-size:11px; color:var(--dim); text-align:center; margin-top:6px; }
+  @media (min-width:760px) { body { max-width:760px; margin:0 auto; } }
+</style>
+</head>
+<body>
+<header>
+  <div><div class="ttl">Trysil<span>.</span></div><div class="date" id="date"></div></div>
+  <div class="clock" id="clock">--:--</div>
+</header>
+
+<section class="view" id="v-vaer">
+  <div class="card now" id="now"><div class="label">Været nå</div><div class="err">Henter vær …</div></div>
+  <div class="card"><div class="label">Nedbør neste 90 min · radar</div><div id="ncText" style="margin-top:6px;font-weight:500">–</div>
+    <div class="fig" style="height:70px;margin-top:8px"><canvas id="ncv"></canvas></div></div>
+  <div class="card"><div class="label">Neste 48 timer · sveip sideveis</div>
+    <div class="scroll"><div class="fig" id="mgFig" style="height:230px;width:1440px"><canvas id="mg"></canvas></div></div></div>
+  <div class="card"><div class="label">Neste 9 dager</div><div class="days" id="days" style="margin-top:6px"></div></div>
+  <div class="foot">Data: MET Norway (Yr)</div>
+</section>
+
+<section class="view" id="v-strom">
+  <div class="card">
+    <div class="row"><div class="label" id="nowLbl">Strømpris nå · NO1</div><div class="badge" id="badge"></div></div>
+    <div class="big"><span id="nowPrice">–</span><small>øre/kWh inkl. mva</small></div>
+    <div class="feels" id="trend"></div>
+  </div>
+  <div class="card"><div class="label">I dag og i morgen · trykk og dra i grafen</div>
+    <div class="fig" style="height:240px;margin-top:10px;touch-action:pan-y" id="pFig"><canvas id="pc"></canvas></div>
+    <div class="hint">Grønn = billig, gul = normal, rød = dyrt · stiplet gul = Norgespris 50 øre · skravert = billigste 3 timer</div></div>
+  <div class="card"><div class="grid" style="margin:0;padding:0;border:0">
+    <div><div class="label">Neste time</div><div class="v" id="sNext">–</div></div>
+    <div><div class="label">Snitt i dag</div><div class="v" id="sAvg">–</div></div>
+    <div><div class="label">Lavest i dag</div><div class="v" id="sMin">–</div></div>
+    <div><div class="label">Høyest i dag</div><div class="v" id="sMax">–</div></div>
+    <div><div class="label">Snitt i morgen</div><div class="v" id="sTom">–</div></div>
+    <div><div class="label">Mot Norgespris</div><div class="v" id="sNorge">–</div></div>
+  </div></div>
+  <div class="card"><div class="label">Billigst å bruke strøm</div><div class="tip" id="tip" style="margin-top:6px"></div></div>
+  <div class="card"><div class="label">Neste 12 timer</div><div class="strip" id="strip"></div><div style="height:16px"></div></div>
+  <div class="foot">Spotpris uten nettleie · Data: hvakosterstrommen.no</div>
+</section>
+
+<nav>
+  <a href="#vaer" id="nVaer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="3.5"/><path d="M9 2v1.5M2 9h1.5M4 4l1 1M14 4l-1 1"/><path d="M8 20h9a4 4 0 0 0 .5-8 6 6 0 0 0-10.9 2A3 3 0 0 0 8 20z"/></svg>Vær</a>
+  <a href="#strom" id="nStrom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>Strøm</a>
+</nav>
+
+<script>
+{
+  const LAT = 61.3147, LON = 12.2638, AREA = 'NO1', NORGES = 50, VAT = 1.25;
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2, '0');
+  const hm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const dpr = () => window.devicePixelRatio || 1;
+  function size(c) { const r = c.getBoundingClientRect(), k = dpr(); const w = Math.round(r.width * k), h = Math.round(r.height * k);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } return { w, h, k }; }
+  const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+
+  /* ---------- Faner ---------- */
+  function route() {
+    const v = location.hash === '#strom' ? 'strom' : 'vaer';
+    $('v-vaer').classList.toggle('on', v === 'vaer'); $('v-strom').classList.toggle('on', v === 'strom');
+    $('nVaer').classList.toggle('on', v === 'vaer'); $('nStrom').classList.toggle('on', v === 'strom');
+    try { localStorage.setItem('trysil_tab', v); } catch (e) {}
+  }
+  if (!location.hash) { try { const t = localStorage.getItem('trysil_tab'); if (t) location.hash = t; } catch (e) {} }
+  addEventListener('hashchange', route); route();
+
+  function tick() { const d = new Date(); $('clock').textContent = hm(d);
+    $('date').textContent = d.toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  tick(); setInterval(tick, 10000);
+
+  /* ---------- Værsymboler ---------- */
+  const SUN = '<circle cx="32" cy="32" r="11" fill="#f5b942"/><g stroke="#f5b942" stroke-width="3.5" stroke-linecap="round"><path d="M32 8v6M32 50v6M8 32h6M50 32h6M15 15l4 4M45 45l4 4M15 49l4-4M45 19l4-4"/></g>';
+  const MOON = '<path d="M40 12a20 20 0 1 0 12 30 16 16 0 0 1-12-30z" fill="#c7d2e0"/>';
+  const cloud = (c = '#c7d2e0', y = 0) => `<path transform="translate(0 ${y})" d="M20 50h26a11 11 0 0 0 1-22 15 15 0 0 0-28 3 9.5 9.5 0 0 0 1 19z" fill="${c}"/>`;
+  const drops = c => `<g stroke="#60a5fa" stroke-width="3" stroke-linecap="round">${[18, 30, 42].slice(0, c).map(x => `<path d="M${x + 4} 52l-3 7"/>`).join('')}</g>`;
+  const flakes = c => `<g fill="#e8edf2">${[20, 32, 44].slice(0, c).map(x => `<circle cx="${x}" cy="57" r="2.8"/>`).join('')}</g>`;
+  function icon(code) {
+    code = code || 'cloudy';
+    const night = code.includes('_night'), base = code.replace(/_(day|night|polartwilight)/, ''), body = night ? MOON : SUN;
+    const small = s => `<g transform="translate(-8 -8) scale(.75)">${s}</g>`;
+    let svg;
+    if (base === 'clearsky') svg = body;
+    else if (base === 'fair') svg = small(body) + `<g transform="translate(12 10) scale(.75)">${cloud()}</g>`;
+    else if (base === 'partlycloudy') svg = small(body) + cloud('#c7d2e0', 2);
+    else if (base === 'fog') svg = '<g stroke="#8b97a6" stroke-width="4" stroke-linecap="round"><path d="M12 26h40M8 36h48M14 46h36"/></g>';
+    else {
+      const heavy = base.includes('heavy') ? 3 : base.includes('light') ? 1 : 2;
+      let fx = base.includes('rain') ? drops(heavy) : base.includes('sleet') ? drops(1) + '<g fill="#e8edf2"><circle cx="38" cy="57" r="2.8"/></g>' : base.includes('snow') ? flakes(heavy) : '';
+      svg = (base.includes('showers') ? small(body) : '') + cloud(base === 'cloudy' ? '#c7d2e0' : '#9aa6b5', -6) + fx +
+        (base.includes('thunder') ? '<path d="M34 40l-6 11h6l-4 10 10-14h-6l4-7z" fill="#f5b942"/>' : '');
+    }
+    return `<svg viewBox="0 0 64 64">${svg}</svg>`;
+  }
+  const imgs = {};
+  function iconImg(code) {
+    if (!imgs[code]) { const im = new Image(); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(icon(code).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" ')); imgs[code] = im; }
+    return imgs[code];
+  }
+
+  /* ---------- Vær ---------- */
+  let ts = [], nc = [];
+  const sym = d => d.next_1_hours?.summary.symbol_code || d.next_6_hours?.summary.symbol_code || 'cloudy';
+  const dirName = deg => ['nord', 'nordøst', 'øst', 'sørøst', 'sør', 'sørvest', 'vest', 'nordvest'][Math.round(deg / 45) % 8];
+  function feels(t, v) { const k = v * 3.6; return t <= 10 && k > 4.8 ? 13.12 + .6215 * t - 11.37 * k ** .16 + .3965 * t * k ** .16 : t; }
+  function sunTimes(date) {
+    const r = Math.PI / 180, noon = new Date(date); noon.setHours(12, 0, 0, 0);
+    const n = Math.ceil(noon.getTime() / 86400000 + 2440587.5 - 2451545 + .0008), js = n - LON / 360;
+    const M = (357.5291 + .98560028 * js) % 360, Cc = 1.9148 * Math.sin(M * r) + .02 * Math.sin(2 * M * r) + .0003 * Math.sin(3 * M * r);
+    const lam = (M + Cc + 180 + 102.9372) % 360, jt = 2451545 + js + .0053 * Math.sin(M * r) - .0069 * Math.sin(2 * lam * r);
+    const sd = Math.sin(lam * r) * Math.sin(23.4397 * r), cd = Math.cos(Math.asin(sd));
+    const cw = (Math.sin(-.833 * r) - Math.sin(LAT * r) * sd) / (Math.cos(LAT * r) * cd);
+    if (cw > 1 || cw < -1) return null;
+    const w = Math.acos(cw) / r, D = j => new Date((j - 2440587.5) * 86400000);
+    return { rise: D(jt - w / 360), set: D(jt + w / 360) };
+  }
+  async function loadWeather() {
+    const r = await fetch(`https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${LAT}&lon=${LON}`);
+    if (!r.ok) throw new Error('MET ' + r.status);
+    ts = (await r.json()).properties.timeseries.map(x => ({ t: new Date(x.time), d: x.data }));
+    renderNow(); renderDays(); drawMg();
+  }
+  async function loadNowcast() {
+    const r = await fetch(`https://api.met.no/weatherapi/nowcast/2.0/complete?lat=${LAT}&lon=${LON}`);
+    if (!r.ok) throw new Error('radar');
+    nc = (await r.json()).properties.timeseries.map(x => ({ t: new Date(x.time), r: x.data.instant.details.precipitation_rate || 0, temp: x.data.instant.details.air_temperature }));
+    ncText(); drawNc();
+  }
+  function renderNow() {
+    const p = ts[0], d = p.d.instant.details, n1 = p.d.next_1_hours?.details || {};
+    const t = nc[0]?.temp ?? d.air_temperature, s = sunTimes(new Date());
+    $('now').innerHTML = `<div class="label">Været nå</div>
+      <div class="row" style="margin-top:6px">${icon(sym(p.d))}<div><div class="temp ${t < 0 ? 'cold' : ''}">${Math.round(t)}°</div>
+      <div class="feels">Føles som <b>${Math.round(feels(t, d.wind_speed || 0))}°</b></div></div></div>
+      <div class="grid">
+        <div><div class="label">Vind</div><div class="v">${Math.round(d.wind_speed)}<small>m/s${d.wind_speed_of_gust ? ' · kast ' + Math.round(d.wind_speed_of_gust) : ''}</small></div><div class="feels" style="margin:0">fra ${dirName(d.wind_from_direction || 0)}</div></div>
+        <div><div class="label">Nedbør 1 t</div><div class="v">${(n1.precipitation_amount ?? 0).toLocaleString('nb-NO')}<small>mm${n1.probability_of_precipitation != null ? ' · ' + Math.round(n1.probability_of_precipitation) + ' %' : ''}</small></div></div>
+        <div><div class="label">Skydekke</div><div class="v">${Math.round(d.cloud_area_fraction ?? 0)}<small>%</small></div></div>
+        <div><div class="label">Fuktighet</div><div class="v">${Math.round(d.relative_humidity ?? 0)}<small>%</small></div></div>
+        <div><div class="label">Lufttrykk</div><div class="v">${Math.round(d.air_pressure_at_sea_level ?? 0)}<small>hPa</small></div></div>
+        <div><div class="label">Sol</div><div class="v" style="font-size:16px">${s ? `↑ ${hm(s.rise)} ↓ ${hm(s.set)}` : '–'}</div></div>
+      </div>`;
+  }
+  function renderDays() {
+    const by = {};
+    ts.forEach(p => {
+      const k = p.t.toDateString();
+      (by[k] ||= { d: p.t, t: [], pr: 0, sym: null }).t.push(p.d.instant.details.air_temperature);
+      const n1 = p.d.next_1_hours?.details.precipitation_amount, n6 = p.d.next_6_hours?.details.precipitation_amount;
+      if (n1 != null) by[k].pr += n1; else if (n6 != null && p.t.getHours() % 6 === 0) by[k].pr += n6;
+      if (p.t.getHours() >= 11 && p.t.getHours() <= 13 && !by[k].sym) by[k].sym = p.d.next_6_hours?.summary.symbol_code || p.d.next_1_hours?.summary.symbol_code;
+    });
+    const days = Object.values(by).slice(1, 10);
+    const lo = Math.min(...days.map(x => Math.min(...x.t))), hi = Math.max(...days.map(x => Math.max(...x.t)));
+    $('days').innerHTML = days.map(x => {
+      const a = Math.min(...x.t), b = Math.max(...x.t), L = (a - lo) / (hi - lo || 1) * 100, W = Math.max(4, (b - a) / (hi - lo || 1) * 100);
+      return `<div class="d"><div class="n">${x.d.toLocaleDateString('nb-NO', { weekday: 'short' }).replace('.', '')}</div>${icon(x.sym || 'cloudy')}
+        <div><div class="rng"><i style="left:${L}%;width:${W}%"></i></div><div class="pr">${x.pr >= .5 ? x.pr.toFixed(0) + ' mm' : ''}</div></div>
+        <div class="mm"><b>${Math.round(b)}°</b> <span>${Math.round(a)}°</span></div></div>`;
+    }).join('');
+  }
+  function ncText() {
+    if (!nc.length) { $('ncText').textContent = 'Radar ikke tilgjengelig'; return; }
+    const kind = (nc[0].temp ?? 0) <= .5 ? 'Snø' : 'Regn', wet = nc.findIndex(x => x.r > .05);
+    let t;
+    if (nc[0].r > .05) { const s = nc.findIndex(x => x.r <= .05); t = s < 0 ? `${kind} hele neste halvannen time` : `${kind} nå – opphold om ca. ${Math.round((nc[s].t - Date.now()) / 60000)} min`; }
+    else t = wet > 0 ? `${kind} om ca. ${Math.max(5, Math.round((nc[wet].t - Date.now()) / 60000))} min` : 'Opphold neste 90 minutter';
+    $('ncText').innerHTML = `<span style="color:${wet >= 0 ? '#38bdf8' : '#4ade80'}">${t}</span>`;
+  }
+  function drawNc() {
+    const c = $('ncv'), { w, h, k } = size(c), x = c.getContext('2d'); x.clearRect(0, 0, w, h);
+    if (!nc.length) return;
+    const bw = w / nc.length, max = Math.max(2, ...nc.map(p => p.r)), base = h - 14 * k;
+    nc.forEach((p, i) => { const bh = Math.max(2 * k, p.r / max * (base - 2 * k));
+      x.fillStyle = p.r > .05 ? `rgba(56,189,248,${.5 + Math.min(.5, p.r / max)})` : 'rgba(255,255,255,.07)'; x.fillRect(i * bw + 1, base - bh, bw - 2, bh); });
+    x.fillStyle = '#5b6878'; x.font = `${10 * k}px system-ui`; x.textBaseline = 'top';
+    [0, 30, 60, 90].forEach(m => { x.textAlign = m === 0 ? 'left' : m === 90 ? 'right' : 'center'; x.fillText(m ? `+${m}` : 'nå', m / 90 * w, base + 3 * k); });
+  }
+  function drawMg() {
+    if (!ts.length) return;
+    const c = $('mg'), { w, h, k } = size(c), x = c.getContext('2d'); x.clearRect(0, 0, w, h);
+    const hrs = ts.slice(0, 49), fs = 11 * k, padL = 16 * k, padR = 16 * k, top = 34 * k, bot = 40 * k, W = w - padL - padR, H = h - top - bot;
+    const X = i => padL + i / (hrs.length - 1) * W, temps = hrs.map(p => p.d.instant.details.air_temperature);
+    let lo = Math.floor(Math.min(...temps) - 2), hi = Math.ceil(Math.max(...temps) + 2);
+    if (hi - lo < 8) { const m = (hi + lo) / 2; lo = Math.floor(m - 4); hi = Math.ceil(m + 4); }
+    const Y = v => top + H - (v - lo) / (hi - lo) * H;
+    const pr = hrs.map(p => p.d.next_1_hours?.details || {}), pMax = Math.max(4, ...pr.map(q => q.precipitation_max ?? q.precipitation_amount ?? 0));
+    const P = v => top + H - v / pMax * H * .55;
+    hrs.forEach((p, i) => {
+      const s = sunTimes(p.t); if (s && (p.t < s.rise || p.t > s.set) && i < hrs.length - 1) { x.fillStyle = 'rgba(0,0,0,.2)'; x.fillRect(X(i), top, X(i + 1) - X(i) + .5, H); }
+      if (p.t.getHours() === 0 && i) { x.strokeStyle = 'rgba(255,255,255,.12)'; x.lineWidth = k; x.beginPath(); x.moveTo(X(i), 4 * k); x.lineTo(X(i), top + H); x.stroke();
+        x.fillStyle = '#8b97a6'; x.font = `600 ${fs}px system-ui`; x.textAlign = 'left'; x.textBaseline = 'top'; x.fillText(p.t.toLocaleDateString('nb-NO', { weekday: 'long' }), X(i) + 5 * k, 4 * k); }
+    });
+    if (lo < 0 && hi > 0) { x.strokeStyle = 'rgba(96,165,250,.45)'; x.lineWidth = k; x.beginPath(); x.moveTo(padL, Y(0)); x.lineTo(w - padR, Y(0)); x.stroke(); }
+    const bw = W / (hrs.length - 1) * .7;
+    pr.forEach((q, i) => { const a = q.precipitation_amount ?? 0, m = q.precipitation_max ?? a;
+      if (m > 0) { x.fillStyle = 'rgba(56,189,248,.22)'; x.fillRect(X(i) - bw / 2, P(m), bw, top + H - P(m)); }
+      if (a > 0) { x.fillStyle = 'rgba(56,189,248,.85)'; x.fillRect(X(i) - bw / 2, P(a), bw, top + H - P(a)); } });
+    const path = new Path2D(); temps.forEach((v, i) => { if (!i) return path.moveTo(X(0), Y(v)); const xc = (X(i - 1) + X(i)) / 2; path.bezierCurveTo(xc, Y(temps[i - 1]), xc, Y(v), X(i), Y(v)); });
+    const z = Math.max(0, Math.min(1, hi / (hi - lo))), g = x.createLinearGradient(0, Y(hi), 0, Y(lo));
+    g.addColorStop(0, '#f87171'); g.addColorStop(Math.max(0, z - .001), '#fbbf24'); g.addColorStop(Math.min(1, z + .001), '#60a5fa'); g.addColorStop(1, '#a5b4fc');
+    x.strokeStyle = g; x.lineWidth = 3 * k; x.lineCap = 'round'; x.stroke(path);
+    hrs.forEach((p, i) => {
+      if (i % 2) return;
+      const im = iconImg(sym(p.d)); if (im.complete) x.drawImage(im, X(i) - 12 * k, Y(temps[i]) - 34 * k, 24 * k, 24 * k);
+      x.fillStyle = temps[i] < 0 ? '#93c5fd' : '#fde68a'; x.font = `600 ${fs}px system-ui`; x.textAlign = 'center'; x.textBaseline = 'top'; x.fillText(Math.round(temps[i]) + '°', X(i), Y(temps[i]) + 6 * k);
+      const d = p.d.instant.details, yy = top + H + 12 * k;
+      x.save(); x.translate(X(i), yy); x.rotate(((d.wind_from_direction || 0) + 180) * Math.PI / 180);
+      x.fillStyle = d.wind_speed > 10 ? '#f87171' : d.wind_speed > 5 ? '#fbbf24' : '#8b97a6';
+      x.beginPath(); x.moveTo(0, -6 * k); x.lineTo(4 * k, 4.5 * k); x.lineTo(0, 2 * k); x.lineTo(-4 * k, 4.5 * k); x.closePath(); x.fill(); x.restore();
+      x.fillStyle = '#8b97a6'; x.font = `${fs * .9}px system-ui`; x.fillText(Math.round(d.wind_speed), X(i) + 11 * k, yy - 5 * k);
+      x.fillStyle = '#5b6878'; x.fillText(pad(p.t.getHours()), X(i), top + H + 24 * k);
+    });
+  }
+
+  /* ---------- Strøm ---------- */
+  let pts = [], cursor = null;
+  const COL = ['#4ade80', '#facc15', '#f87171'];
+  const avg = a => a.reduce((s, p) => s + p.ore, 0) / (a.length || 1);
+  const today = () => pts.filter(p => p.t.toDateString() === new Date().toDateString());
+  const level = (o, a) => { const r = o / a; return r < .85 ? 0 : r > 1.15 ? 2 : 1; };
+  const idxNow = () => { const n = Date.now(), i = pts.findIndex(p => p.t <= n && p.end > n); return i < 0 ? 0 : i; };
+  async function day(d) {
+    const r = await fetch(`https://www.hvakosterstrommen.no/api/v1/prices/${d.getFullYear()}/${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${AREA}.json`);
+    return r.ok ? r.json() : [];
+  }
+  async function loadPower() {
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0); const t1 = new Date(t0); t1.setDate(t1.getDate() + 1);
+    const raw = [...await day(t0), ...await day(t1).catch(() => [])];
+    if (!raw.length) throw new Error('ingen priser');
+    pts = raw.map(p => ({ t: new Date(p.time_start), end: new Date(p.time_end), ore: p.NOK_per_kWh * 100 * VAT })).sort((a, b) => a.t - b.t);
+    stats(); drawPower();
+  }
+  function cheapest(hours) {
+    const n = Date.now(), ahead = pts.filter(p => p.end > n), span = hours * 3600000; let best = null;
+    for (let i = 0; i < ahead.length; i++) { const s = ahead[i].t.getTime(), e = s + span, win = ahead.filter(p => p.t >= s && p.t < e);
+      if (!win.length || win[win.length - 1].end.getTime() < e) break; const a = avg(win); if (!best || a < best.a) best = { a, from: new Date(s), to: new Date(e) }; }
+    return best;
+  }
+  function stats() {
+    if (!pts.length) return;
+    const tdy = today(), a = avg(tdy), ni = cursor ?? idxNow(), np = pts[ni], lv = level(np.ore, a);
+    $('nowLbl').textContent = cursor == null ? `Strømpris nå · ${AREA}` : `Kl. ${hm(np.t)}${np.t.toDateString() !== new Date().toDateString() ? ' i morgen' : ''}`;
+    $('nowPrice').textContent = Math.round(np.ore); $('nowPrice').style.color = COL[lv];
+    $('badge').textContent = ['Billig', 'Normalt', 'Dyrt'][lv]; $('badge').style.cssText = `color:${COL[lv]};background:${hexA(COL[lv], .14)}`;
+    const nx = pts[ni + 1];
+    $('trend').innerHTML = nx ? `Kl. ${hm(nx.t)}: <b style="color:${nx.ore > np.ore ? '#f87171' : '#4ade80'}">${nx.ore > np.ore ? '▲' : '▼'} ${Math.round(nx.ore)} øre</b>` : '';
+    const mn = tdy.reduce((m, p) => p.ore < m.ore ? p : m, tdy[0]), mx = tdy.reduce((m, p) => p.ore > m.ore ? p : m, tdy[0]), tom = pts.filter(p => p.t.toDateString() !== new Date().toDateString());
+    $('sNext').innerHTML = `${Math.round(avg(pts.slice(ni, ni + 4)))}<small>øre</small>`;
+    $('sAvg').innerHTML = `${Math.round(a)}<small>øre</small>`;
+    $('sMin').innerHTML = `${Math.round(mn.ore)}<small>kl. ${hm(mn.t)}</small>`;
+    $('sMax').innerHTML = `${Math.round(mx.ore)}<small>kl. ${hm(mx.t)}</small>`;
+    $('sTom').innerHTML = tom.length ? `${Math.round(avg(tom))}<small>øre</small>` : '<small>etter kl. 13</small>';
+    const df = Math.round(np.ore - NORGES); $('sNorge').innerHTML = `<span style="color:${df > 0 ? '#f87171' : '#4ade80'}">${df > 0 ? '+' : ''}${df}</span><small>øre</small>`;
+    const b1 = cheapest(1), b3 = cheapest(3), dw = d => d.toDateString() === new Date().toDateString() ? '' : ' i morgen';
+    $('tip').innerHTML = [b1 && `1 time: <b>${hm(b1.from)}–${hm(b1.to)}</b>${dw(b1.from)} · ${Math.round(b1.a)} øre`,
+      b3 && `3 timer: <b>${hm(b3.from)}–${hm(b3.to)}</b>${dw(b3.from)} · ${Math.round(b3.a)} øre`,
+      b3 && `Lade 30 kWh da i stedet for nå: spar ca. <b>${Math.max(0, Math.round((pts[idxNow()].ore - b3.a) * .3))} kr</b>`].filter(Boolean).join('<br>');
+    const hrs = []; for (let i = idxNow(); i < pts.length && hrs.length < 12; i++) { const p = pts[i], key = p.t.getHours() + '-' + p.t.getDate();
+      let hh = hrs.find(q => q.key === key); if (!hh) { hh = { key, t: p.t, v: [] }; hrs.push(hh); } hh.v.push(p.ore); }
+    const m = Math.max(...hrs.map(q => Math.max(...q.v)), 1);
+    $('strip').innerHTML = hrs.map(q => { const v = q.v.reduce((s, y) => s + y, 0) / q.v.length;
+      return `<div style="height:${Math.max(6, v / m * 100)}%;background:${COL[level(v, a)]}"><span>${pad(q.t.getHours())}</span></div>`; }).join('');
+  }
+  function drawPower(now = performance.now()) {
+    if (!pts.length) return;
+    const c = $('pc'), { w, h, k } = size(c), x = c.getContext('2d'); x.clearRect(0, 0, w, h);
+    const fs = 10 * k, padL = 30 * k, padR = 6 * k, top = 34 * k, bot = 20 * k, W = w - padL - padR, H = h - top - bot;
+    const tA = pts[0].t.getTime(), tB = pts[pts.length - 1].end.getTime(), X = t => padL + (t - tA) / (tB - tA) * W;
+    const maxV = Math.max(...pts.map(p => p.ore), NORGES) * 1.1, minV = Math.min(0, ...pts.map(p => p.ore)), Y = v => top + H - (v - minV) / (maxV - minV) * H;
+    const a = avg(today()), nowT = Date.now();
+    x.font = `${fs}px system-ui`; x.fillStyle = '#5b6878'; x.textAlign = 'right'; x.textBaseline = 'middle';
+    const step = maxV > 400 ? 100 : maxV > 150 ? 50 : 25;
+    for (let v = 0; v <= maxV; v += step) { x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = k; x.beginPath(); x.moveTo(padL, Y(v)); x.lineTo(w - padR, Y(v)); x.stroke(); x.fillText(v, padL - 4 * k, Y(v)); }
+    x.textAlign = 'center'; x.textBaseline = 'top';
+    for (let t = tA; t <= tB; t += 3600000) { const d = new Date(t); if (d.getHours() % 6 === 0) x.fillText(pad(d.getHours()), X(t), top + H + 5 * k); }
+    const mid = new Date(tA); mid.setDate(mid.getDate() + 1);
+    if (mid.getTime() < tB) { x.setLineDash([3 * k, 4 * k]); x.strokeStyle = '#5b6878'; x.beginPath(); x.moveTo(X(+mid), top - 4 * k); x.lineTo(X(+mid), top + H); x.stroke(); x.setLineDash([]); }
+    const best = cheapest(3); if (best) { x.fillStyle = 'rgba(74,222,128,.10)'; x.fillRect(X(+best.from), top, X(+best.to) - X(+best.from), H); }
+    pts.forEach(p => { const lv = level(p.ore, a), past = +p.end <= nowT, gg = x.createLinearGradient(0, Y(p.ore), 0, Y(minV));
+      gg.addColorStop(0, hexA(COL[lv], past ? .2 : .5)); gg.addColorStop(1, hexA(COL[lv], .02)); x.fillStyle = gg; x.fillRect(X(+p.t), Y(p.ore), X(+p.end) - X(+p.t) + .5, Y(minV) - Y(p.ore)); });
+    let prev = null; x.lineWidth = 2 * k;
+    pts.forEach(p => { x.strokeStyle = hexA(COL[level(p.ore, a)], +p.end <= nowT ? .45 : 1); x.beginPath();
+      if (prev != null) { x.moveTo(X(+p.t), Y(prev)); x.lineTo(X(+p.t), Y(p.ore)); } else x.moveTo(X(+p.t), Y(p.ore)); x.lineTo(X(+p.end), Y(p.ore)); x.stroke(); prev = p.ore; });
+    x.setLineDash([5 * k, 5 * k]); x.lineWidth = 1.2 * k;
+    x.strokeStyle = '#8b97a6'; x.beginPath(); x.moveTo(padL, Y(a)); x.lineTo(w - padR, Y(a)); x.stroke();
+    x.strokeStyle = '#f5b942'; x.beginPath(); x.moveTo(padL, Y(NORGES)); x.lineTo(w - padR, Y(NORGES)); x.stroke(); x.setLineDash([]);
+    const ni = cursor ?? idxNow(), np = pts[ni], nx = cursor == null ? X(nowT) : X(+np.t + (np.end - np.t) / 2), pulse = (Math.sin(now / 350) + 1) / 2;
+    x.strokeStyle = cursor == null ? 'rgba(255,255,255,.75)' : '#60a5fa'; x.lineWidth = 1.5 * k; x.beginPath(); x.moveTo(nx, top - 4 * k); x.lineTo(nx, top + H); x.stroke();
+    x.fillStyle = hexA(COL[level(np.ore, a)], .25 + .25 * pulse); x.beginPath(); x.arc(nx, Y(np.ore), (8 + 6 * pulse) * k, 0, 7); x.fill();
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(nx, Y(np.ore), 4 * k, 0, 7); x.fill();
+    const txt = `${hm(np.t)} · ${Math.round(np.ore)} øre`; x.font = `600 ${12 * k}px system-ui`;
+    const tw = x.measureText(txt).width + 14 * k, bx = Math.min(Math.max(nx - tw / 2, padL), w - padR - tw);
+    x.fillStyle = 'rgba(11,15,20,.92)'; x.fillRect(bx, 4 * k, tw, 22 * k); x.fillStyle = '#e8edf2'; x.textAlign = 'left'; x.textBaseline = 'middle'; x.fillText(txt, bx + 7 * k, 15 * k);
+  }
+  // Trykk og dra i strømgrafen for å se pris for et kvarter
+  const pf = $('pFig');
+  function scrub(e) {
+    if (!pts.length) return;
+    const r = pf.getBoundingClientRect(), padL = 30, W = r.width - padL - 6, f = Math.max(0, Math.min(1, (e.clientX - r.left - padL) / W));
+    const t = +pts[0].t + f * (+pts[pts.length - 1].end - +pts[0].t), i = pts.findIndex(p => +p.t <= t && +p.end > t);
+    if (i >= 0) { cursor = i; stats(); }
+  }
+  pf.addEventListener('pointerdown', e => { scrub(e); pf.setPointerCapture(e.pointerId); });
+  pf.addEventListener('pointermove', e => { if (e.buttons || e.pointerType === 'touch') scrub(e); });
+  pf.addEventListener('pointerup', () => setTimeout(() => { cursor = null; stats(); }, 4000));
+
+  /* ---------- Start og oppdatering ---------- */
+  function loop(now) { if ($('v-strom').classList.contains('on')) drawPower(now); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+  const run = (fn, el, msg) => fn().catch(() => { const e = $(el); if (e) e.innerHTML = `<div class="err">${msg}</div>`; });
+  run(loadWeather, 'now', 'Fikk ikke hentet vær. Prøv igjen om litt.');
+  loadNowcast().catch(() => ncText());
+  run(loadPower, 'tip', 'Fikk ikke hentet strømpriser.');
+  setInterval(() => loadWeather().catch(() => {}), 30 * 60000);
+  setInterval(() => loadNowcast().catch(() => {}), 5 * 60000);
+  setInterval(() => loadPower().catch(() => {}), 15 * 60000);
+  setInterval(() => { if (cursor == null) stats(); }, 60000);
+  addEventListener('resize', () => { drawMg(); drawNc(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadWeather().catch(() => {}); loadNowcast().catch(() => {}); loadPower().catch(() => {}); } });
+}
+</script>
+</body>
+</html>
